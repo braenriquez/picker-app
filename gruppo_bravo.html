@@ -315,11 +315,11 @@ function classifyModel(m){
 }
 
 function getSizeSystem(m){
-  if(/rental.*vest|vest.*rental/i.test(m))return'vest_xs';
   if(/BOYS\+|HUSKY\.BOYS|BOYS\.2BV|BOYS-Suit|Rental\.BOYS-Jacket/i.test(m))return'boys_numeric';
   if(/Rental\.BOYS-Vest|BOYS_2BV\.Jacket/i.test(m))return'boys_bxs';
   if(/Rental BOYS\.Pants|boys.*pants/i.test(m))return'boys_pants';
   if(/BOYS.*PANT|^BOYS-Pants/i.test(m))return'boys_tpants';
+  if(/rental.*vest|vest.*rental/i.test(m))return'vest_xs';
   if(/\bshirt\b|linen.shirt|LayDown|FrenchCuff|Adj\.|Linen-Shirt|Clean$|Slim-Fit$/i.test(m))return'shirt';
   if(/jean|jeans|shorts/i.test(m))return'jeans';
   return'standard';
@@ -510,7 +510,7 @@ function parseMantoniSuits(raw){
     const aisle=normalizeAisle(row[aisleC]);
     const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
     const base={lot,flag:flag==='None'?null:flag,model,brand:'Mantoni',category:cat,aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:sys};
-    if(sys==='vest_xs'){
+    if(sys==='vest_xs'||sys==='boys_bxs'){
       const sz={};
       for(let c=shortS;c<longS;c++){const lbl=shortSubHdr[c];const val=row[c];if(lbl&&val&&typeof val==='number'&&val>0)sz[String(lbl)]=safeInt(val);}
       if(!Object.keys(sz).length)continue;
