@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gruppo Bravo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f0f;--surface:#1a1a1a;--s2:#222;--s3:#2a2a2a;
+  --border:#2e2e2e;--border2:#3a3a3a;
+  --accent:#c8a96e;--accent2:#e8c98e;--accentbg:#2a2010;
+  --text:#f0ede8;--muted:#888;--muted2:#555;
+  --green:#2a4a2a;--greent:#7dcc7d;
+  --red:#8b2020;--redt:#cc5555;
+  --bluebg:#1a3a6a;--bluet:#6aabff;
+  --greenbg:#1a3d1a;--greenbt:#5dc95d;
+  --review:#3a2a10;--reviewt:#e8a030;
+  --nav-h:62px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.hdr h1{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:3px;color:var(--accent);line-height:1}
+.hdr .sub{font-size:.65rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.hbadge{margin-left:auto;background:var(--accent);color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:1px;padding:4px 10px;border-radius:20px;display:none}
+.hbadge.on{display:block}
+.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:100}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;transition:color .15s;position:relative;padding-bottom:5px}
+.nb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nb.active{color:var(--accent)}
+.nb.active::after{content:'';position:absolute;top:0;left:22%;right:22%;height:2px;background:var(--accent);border-radius:0 0 3px 3px}
+.npill{position:absolute;top:5px;right:calc(50% - 24px);background:#cc2222;color:#fff;font-size:.58rem;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg)}
+.npill.on{display:flex}
+.page{display:none;padding:18px 18px calc(var(--nav-h)+18px);max-width:760px;margin:0 auto}
+.page.active{display:block}
+.slabel{font-size:.63rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:7px;display:block}
+.fgroup{margin-bottom:18px}
+select{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92rem;padding:11px 36px 11px 13px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;transition:border-color .15s}
+select:focus{outline:none;border-color:var(--accent)}
+select:disabled{opacity:.3;cursor:not-allowed}
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.cb{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:9px 14px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.cb:hover{border-color:var(--accent);color:var(--accent)}
+.cb.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.icard{display:none;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px 15px;gap:20px;margin-bottom:16px;flex-wrap:wrap}
+.icard.on{display:flex}
+.ic-item{display:flex;flex-direction:column;gap:1px}
+.ic-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.ic-val{color:var(--text);font-weight:600;font-size:.86rem}
+.sgrid{display:flex;flex-wrap:wrap;gap:9px;min-height:50px;margin-bottom:20px;align-items:flex-start;align-content:flex-start}
+.sempty{font-size:.8rem;color:var(--muted);font-style:italic;padding:8px 0}
+.szchip{position:relative;background:var(--green);border:1.5px solid var(--greent);border-radius:8px;color:var(--greent);font-weight:700;cursor:pointer;user-select:none;transition:background .12s,border-color .12s;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 9px 7px;gap:2px;margin-top:8px;margin-left:8px}
+.szchip:active{transform:scale(.9)}
+.szchip.counted{background:var(--accentbg);border-color:var(--accent2);color:var(--accent)}
+.csz{font-size:1rem;font-weight:700;line-height:1}
+.cst{font-size:.58rem;opacity:.55;line-height:1}
+.szchip.counted .cst{color:#9a8050;opacity:.7}
+.cbadge{position:absolute;top:-8px;right:-8px;background:#cc2222;color:#fff;font-size:.6rem;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg);z-index:3;pointer-events:none}
+.cbadge.on{display:flex}
+.cclr{position:absolute;top:-8px;left:-8px;width:18px;height:18px;border-radius:50%;background:var(--surface);border:2px solid #444;color:#888;font-size:.6rem;font-weight:700;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:4;transition:background .12s,color .12s,border-color .12s;line-height:1;padding:0}
+.cclr.on{display:flex}
+.cclr:hover{background:var(--red);color:#fff;border-color:var(--red)}
+@keyframes chipBounce{0%{transform:scale(1)}35%{transform:scale(1.22)}65%{transform:scale(.93)}100%{transform:scale(1)}}
+.szchip.bounce{animation:chipBounce .2s ease forwards}
+.addbtn{background:var(--accent);border:none;border-radius:10px;color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;padding:14px;cursor:pointer;width:100%;transition:background .15s}
+.addbtn:hover{background:var(--accent2)}
+.addbtn:active{transform:scale(.98)}
+.addbtn:disabled{opacity:.28;cursor:not-allowed;transform:none}
+.add-btn-wrap{position:sticky;bottom:calc(var(--nav-h)+8px);z-index:50;padding-top:14px;background:linear-gradient(to bottom,rgba(15,15,15,0) 0%,var(--bg) 35%)}
+.fbadge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:.67rem;font-weight:700;flex-shrink:0}
+.fC{background:var(--bluebg);color:var(--bluet)}.fP{background:var(--greenbg);color:var(--greenbt)}
+.ptopbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.lstats{font-size:.72rem;color:var(--muted)}.lstats strong{color:var(--text)}
+.tactions{margin-left:auto;display:flex;gap:7px}
+.btn-o{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;cursor:pointer;transition:all .15s}
+.btn-o:hover{border-color:var(--accent);color:var(--accent)}
+.btn-d{background:transparent;border:1px solid var(--red);border-radius:6px;color:var(--redt);font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;cursor:pointer;transition:all .15s}
+.btn-d:hover{background:var(--red);color:var(--text)}
+.ag{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;animation:fadeUp .18s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.ah{background:var(--s2);border-bottom:1px solid var(--border);padding:8px 15px;display:flex;align-items:center;gap:8px}
+.albl{font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
+.anum{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--accent);letter-spacing:1px;line-height:1}
+.acnt{margin-left:auto;font-size:.64rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px;border:1px solid var(--border)}
+.lsg{border-bottom:1px solid var(--border)}.lsg:last-child{border-bottom:none}
+.lsh{display:flex;align-items:center;gap:7px;padding:6px 13px 6px 24px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(46,46,46,.5)}
+.lshlot{font-size:.8rem;font-weight:700;color:var(--text)}
+.lshmod{font-size:.72rem;color:var(--muted)}
+.prow{display:grid;grid-template-columns:44px 70px 1fr 60px 28px;align-items:center;gap:9px;padding:9px 13px 9px 36px;border-bottom:1px solid rgba(46,46,46,.3);transition:background .1s}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(200,169,110,.03)}
+.ptyp{font-size:.88rem;font-weight:700;color:var(--text)}
+.psz{font-size:.88rem;font-weight:700;color:var(--text)}
+.ocount{font-size:.8rem;font-weight:700;color:var(--muted);background:var(--s2);border:1.5px dashed var(--border);border-radius:5px;min-width:28px;height:25px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.ocount.hc{background:#1e3010;border:1.5px solid #5a8a2a;color:#9dcc4a}
+.qbadge{background:var(--green);border:1px solid var(--greent);border-radius:5px;color:var(--greent);font-weight:700;font-size:.78rem;padding:3px 7px;text-align:center}
+.rbtn{background:transparent;border:1px solid #3a2020;border-radius:5px;color:#665555;font-size:.82rem;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0}
+.rbtn:hover{background:var(--red);border-color:var(--red);color:#fff}
+.pcols{display:grid;grid-template-columns:44px 70px 1fr 60px 28px;gap:9px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+.pcols span{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
+.emptystate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;color:var(--muted);padding:50px 20px;text-align:center}
+.emptyicon{font-size:2.6rem;opacity:.2}
+.emptystate p{font-size:.8rem;line-height:1.6;max-width:240px}
+.ss{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.ss-hdr{background:var(--s2);border-bottom:1px solid var(--border);padding:10px 16px;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--accent)}
+.ss-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.ss-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ss-lbl{font-size:.82rem;color:var(--text);flex:1}
+.ss-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
+.upzone{border:1.5px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.upzone:hover{border-color:var(--accent);background:rgba(200,169,110,.04)}
+.upzone .uzi{font-size:1.8rem;opacity:.4;margin-bottom:8px}
+.upzone .uzt{font-size:.82rem;color:var(--muted)}
+.upzone .uzs{font-size:.68rem;color:var(--muted2);margin-top:4px}
+#file-input{display:none}
+.flist{display:flex;flex-direction:column;gap:6px}
+.fitem{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:.8rem}
+.fiico{font-size:1.1rem;opacity:.7;flex-shrink:0}
+.finame{flex:1;color:var(--text);font-weight:500;word-break:break-all}
+.ficnt{font-size:.68rem;color:var(--muted);white-space:nowrap}
+.firem{background:transparent;border:1px solid #3a2020;border-radius:5px;color:#665555;font-size:.75rem;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0}
+.firem:hover{background:var(--red);border-color:var(--red);color:#fff}
+.rcard{background:var(--surface);border:1px solid var(--reviewt);border-radius:10px;overflow:hidden;margin-bottom:10px;animation:fadeUp .18s ease}
+.rc-hd{background:var(--review);border-bottom:1px solid var(--border);padding:10px 14px}
+.rc-lot{font-size:.82rem;font-weight:700;color:var(--text)}
+.rc-model{font-size:.72rem;color:var(--muted);margin-top:1px}
+.rc-brand{font-size:.65rem;color:var(--reviewt);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.rc-cats{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px}
+.catbtn{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:.72rem;font-weight:600;padding:6px 12px;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.8px}
+.catbtn:hover{border-color:var(--accent);color:var(--accent)}
+.catbtn.sel{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.rc-conf{background:var(--accent);border:none;border-radius:7px;color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:1.5px;padding:9px 20px;cursor:pointer;transition:background .15s;opacity:.3;pointer-events:none}
+.rc-conf.ready{opacity:1;pointer-events:auto}
+.rc-conf.ready:hover{background:var(--accent2)}
+.rc-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 12px;gap:10px}
+.rc-skip{background:transparent;border:none;color:var(--muted);font-size:.72rem;cursor:pointer;text-decoration:underline;padding:0}
+.ce-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.ce-row:last-child{border-bottom:none}
+.ce-model{font-size:.8rem;font-weight:600;color:var(--text);flex:1}
+.ce-sel{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.75rem;padding:5px 24px 5px 8px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;min-width:110px}
+.ce-sel:focus{outline:none;border-color:var(--accent)}
+/* Classifications page */
+.cl-back{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.8px;cursor:pointer;padding:0;margin-bottom:18px;transition:color .15s}
+.cl-back:hover{color:var(--accent)}
+.cl-back svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cl-section{margin-bottom:20px}
+.cl-section-hdr{font-size:.58rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.cl-section-hdr span{color:var(--text);background:var(--s3);border-radius:4px;padding:1px 6px;margin-left:6px;font-size:.6rem}
+.ce-row.ce-auto{background:rgba(106,171,255,.04);border-radius:4px;padding:8px 6px}
+.ce-rule-tag{font-size:.58rem;color:var(--bluet);background:var(--bluebg);border-radius:3px;padding:1px 5px;white-space:nowrap;flex-shrink:0}
+.cl-empty{font-size:.75rem;color:var(--muted);font-style:italic;padding:8px 0}
+.prog-wrap{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:12px;display:none}
+.prog-wrap.on{display:block}
+.prog-lbl{font-size:.75rem;color:var(--muted);margin-bottom:8px}
+.prog-bar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .2s;width:0}
+.toast{position:fixed;bottom:calc(var(--nav-h)+14px);left:50%;transform:translateX(-50%) translateY(8px);background:var(--accent);color:var(--bg);font-weight:600;font-size:.8rem;padding:9px 18px;border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:0;transition:all .2s;pointer-events:none;z-index:1000;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#no-inv{display:none;text-align:center;padding:40px 20px}
+#no-inv .ni-icon{font-size:2rem;opacity:.2;margin-bottom:10px}
+#no-inv p{font-size:.82rem;color:var(--muted);line-height:1.6}
+.sz-hint{font-size:.6rem;color:var(--muted);font-style:italic;margin-bottom:9px;display:none}
+@media print{
+  .hdr,.bnav,.tactions,.rbtn,#page-find,#page-review,#page-settings{display:none!important}
+  #page-list{display:block!important;padding:0}
+  body{background:white;color:black}
+  .ag{border:1px solid #ccc;margin-bottom:10px}
+  .ah,.lsh{background:#f0f0f0!important}
+  .anum{color:#333}
+  .qbadge{background:#e8f5e8;color:#2a6a2a;border-color:#2a6a2a}
+  .ocount.hc{background:#eef8d8;color:#3a6a0a;border-color:#3a6a0a}
+}
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div><h1>Gruppo Bravo</h1><div class="sub">Inventory &amp; Picking</div></div>
+  <div class="hbadge" id="hbadge"></div>
+</header>
+
+<div class="page active" id="page-find">
+  <div id="no-inv"><div class="ni-icon">📦</div><p>No inventory loaded yet.<br>Go to <strong style="color:var(--accent)">Settings</strong> to upload inventory files.</p></div>
+  <div id="find-content">
+    <div class="fgroup"><span class="slabel">Brand</span><div class="chip-row" id="cr-brand"></div></div>
+    <div class="fgroup"><span class="slabel">Type</span><div class="chip-row" id="cr-type"></div></div>
+    <div class="fgroup"><span class="slabel">Lot Number</span><select id="sel-lot"><option value="">— Select a lot —</option></select></div>
+    <div class="fgroup"><span class="slabel">Style / Model</span><select id="sel-style" disabled><option value="">— Select a style —</option></select></div>
+    <div class="icard" id="icard">
+      <div class="ic-item"><div class="ic-lbl">Aisle</div><div class="ic-val" id="ic-aisle">—</div></div>
+      <div class="ic-item"><div class="ic-lbl">Brand</div><div class="ic-val" id="ic-brand">—</div></div>
+      <div class="ic-item"><div class="ic-lbl">Shipment Date</div><div class="ic-val" id="ic-ship">—</div></div>
+    </div>
+    <span class="slabel">Size Type</span>
+    <div class="chip-row" id="cr-sizetype"></div>
+    <div class="sz-hint" id="sz-hint">Tap to count, tap again to add more</div>
+    <div class="sgrid" id="sgrid"><span class="sempty">Select brand, type, lot and style first.</span></div>
+    <div class="add-btn-wrap"><button class="addbtn" id="add-btn" disabled>Add to Pick List</button></div>
+  </div>
+</div>
+
+<div class="page" id="page-list">
+  <div class="ptopbar">
+    <div class="lstats" id="lstats">No items yet</div>
+    <div class="tactions"><button class="btn-o" onclick="window.print()">⎙ Print</button><button class="btn-d" id="clear-list-btn">Clear All</button></div>
+  </div>
+  <div id="picklist-body"><div class="emptystate"><div class="emptyicon">📋</div><p>Add items from the Find tab. Sorted by aisle.</p></div></div>
+</div>
+
+<div class="page" id="page-review">
+  <div style="margin-bottom:16px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--reviewt)">Review Needed</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:3px">Assign a category to each unclassified item.</div>
+  </div>
+  <div id="review-list"></div>
+</div>
+
+<div class="page" id="page-settings">
+  <div class="ss">
+    <div class="ss-hdr">Import Inventory</div>
+    <div class="ss-body">
+      <div class="prog-wrap" id="prog-wrap"><div class="prog-lbl" id="prog-lbl">Importing…</div><div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div></div>
+      <div class="upzone" id="upzone" onclick="document.getElementById('file-input').click()">
+        <div class="uzi">📂</div><div class="uzt">Tap to upload an inventory Excel file</div>
+        <div class="uzs">.xls or .xlsx — Bertolini, Giorgio Fiorelli, Carlo Lusso, Mantoni, Enzo</div>
+      </div>
+      <input type="file" id="file-input" accept=".xls,.xlsx" multiple>
+      <div class="flist" id="flist"></div>
+    </div>
+  </div>
+  <div class="ss">
+    <div class="ss-hdr">Classifications</div>
+    <div class="ss-body">
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">View and edit how every model number is categorized — including auto-classified items.</div>
+      <button class="btn-o" style="width:100%;padding:10px" onclick="showPage('classifications')">Edit All Classifications →</button>
+    </div>
+  </div>
+  <div class="ss">
+    <div class="ss-hdr">Danger Zone</div>
+    <div class="ss-body">
+      <div class="ss-row"><div><div class="ss-lbl">Clear All Inventory</div><div class="ss-sub">Remove all imported data. Files need re-uploading.</div></div><button class="btn-d" id="clear-inv-btn">Clear Inventory</button></div>
+      <div class="ss-row" style="margin-top:6px"><div><div class="ss-lbl">Clear Classification Memory</div><div class="ss-sub">Reset all learned model→category assignments.</div></div><button class="btn-d" id="clear-mem-btn">Clear Memory</button></div>
+      <div class="ss-row" style="margin-top:6px"><div><div class="ss-lbl">Reset Everything</div><div class="ss-sub">Clear all inventory, classifications, pick list and settings.</div></div><button class="btn-d" id="reset-all-btn">Reset All</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-classifications">
+  <button class="cl-back" onclick="showPage('settings')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Back to Settings</button>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--accent);margin-bottom:4px">Classifications</div>
+  <div style="font-size:.72rem;color:var(--muted);margin-bottom:18px">All model numbers and their assigned categories. Items in the <span style="color:var(--reviewt)">Needs Review</span> section have not been confirmed yet.</div>
+  <div id="cl-review-section" class="cl-section"></div>
+  <div id="cl-memory-section" class="cl-section"></div>
+  <div id="cl-auto-section" class="cl-section"></div>
+</div>
+
+<nav class="bnav">
+  <button class="nb active" id="nav-find" onclick="showPage('find')">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/></svg>Find
+  </button>
+  <button class="nb" id="nav-list" onclick="showPage('list')">
+    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Pick List
+    <span class="npill" id="npill">0</span>
+  </button>
+  <button class="nb" id="nav-review" style="display:none" onclick="showPage('review')">
+    <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Review
+    <span class="npill on" id="rev-pill" style="background:var(--reviewt)">!</span>
+  </button>
+  <button class="nb" id="nav-settings" onclick="showPage('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
+  </button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const CATEGORIES=['Suit','Jacket','Vest','Pants','Shirt','Jeans','Boys'];
+const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files'};
+const DEFAULT_RULES=[
+  {p:"will arrive|CANCELLED|cutting#|arrive on|minimum order",c:"__SKIP__"},
+  {p:"\\bjean\\b|\\bjeans\\b|shorts",c:"Jeans"},
+  {p:"\\bshirt\\b|linen.shirt|LayDown|FrenchCuff|Adj\\.Convert|Adj\\.Slim|Linen-Shirt|Clean$|Slim-Fit$",c:"Shirt"},
+  {p:"\\bpant\\b|\\bPANT\\b",c:"Pants"},
+  {p:"Rental BOYS\\.Pants|boys.*pants|BOYS.*PANT",c:"Pants"},
+  {p:"jacket|blazer|BLZR|DinnerJacket",c:"Jacket"},
+  {p:"^Rental\\.Vest|^SATIN.?VEST|^ARLAN\\.?Vest|^ARLAN-Vest|^Arlan-Vest|Rental\\.BOYS-Vest|SATIN-VEST",c:"Vest"},
+  {p:"^Vest$|^Vest\\s*\\(",c:"Vest"},
+  {p:"BOYS[\\._\\-]|BOYS\\+|HUSKY\\.BOYS|BOYS-Suit|BOYS_2BV",c:"Boys"},
+  {p:"TUX|Tuxedo|Adj\\.2B|Adj\\.EuroSlim|SHAWL\\.TUX|TAIL",c:"Suit"},
+  {p:"2BV|3BV|1BV|1BP|DB[\\._\\-]|Euro|Portly|Peak.Lapel|Walton|Manchester|NoP|Slim|Savvy|Arlan|Semi-Slim|Notch|DB-Suit",c:"Suit"},
+];
+
+const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+
+let inventory=load(SK.inventory,[]);
+let unclassified=load(SK.unclassified,[]);
+let memory=load(SK.memory,{});
+let pickList=load(SK.picklist,[]);
+let importedFiles=load(SK.files,[]);
+const F={brand:'',type:'',lot:'',style:'',sizeType:'',chipCountsByType:{}};
+
+function classifyModel(m){
+  if(memory[m])return memory[m];
+  for(const r of DEFAULT_RULES){try{if(new RegExp(r.p,'i').test(m))return r.c}catch{}}
+  return '__UNCLASSIFIED__';
+}
+
+function getSizeSystem(m){
+  if(/^Rental\.Vest|^SATIN.?VEST|^ARLAN\.?Vest|^ARLAN-Vest|^Arlan-Vest|^Vest$|^Vest\s*\(/i.test(m))return'vest_xs';
+  if(/BOYS\+|HUSKY\.BOYS|BOYS\.2BV|BOYS-Suit|Rental\.BOYS-Jacket/i.test(m))return'boys_numeric';
+  if(/Rental\.BOYS-Vest|BOYS_2BV\.Jacket/i.test(m))return'boys_bxs';
+  if(/Rental BOYS\.Pants|boys.*pants/i.test(m))return'boys_pants';
+  if(/BOYS.*PANT|^BOYS-Pants/i.test(m))return'boys_tpants';
+  if(/\bshirt\b|linen.shirt|LayDown|FrenchCuff|Adj\.|Linen-Shirt|Clean$|Slim-Fit$/i.test(m))return'shirt';
+  if(/jean|jeans|shorts/i.test(m))return'jeans';
+  return'standard';
+}
+
+const safeInt=v=>{const n=parseInt(v);return isNaN(n)||n<=0?0:n};
+const isSkip=m=>!m||/will arrive|CANCELLED|cutting#|arrive on|minimum order/i.test(String(m));
+
+function extractSizes(hdr,row,s,e){
+  const out={};
+  for(let c=s;c<=e;c++){
+    const lbl=hdr[c],val=row[c];
+    if(lbl!=null&&val&&typeof val==='number'&&val>0)out[String(lbl)]=safeInt(val);
+  }
+  return out;
+}
+
+function normalizeAisle(v){
+  if(v==null)return null;
+  if(typeof v==='number')return Math.round(v);
+  const s=String(v).trim();
+  if(!s||s==='0')return null;
+  const n=parseFloat(s);
+  if(!isNaN(n)&&String(n)===s)return Math.round(n);
+  return s;
+}
+
+function aisleSortKey(a){
+  if(a==null)return[3,9999,''];
+  if(typeof a==='number')return[1,a,''];
+  const s=String(a);
+  const m2=s.match(/^2F-?(\d+)/i);if(m2)return[2,parseInt(m2[1]),s];
+  if(/^up/i.test(s))return[2,9000,s];
+  const n=parseFloat(s);if(!isNaN(n))return[1,n,''];
+  return[3,9999,s];
+}
+
+// ── Sheet parsers ──
+function parseSheet(wb,sn){
+  const ws=wb.Sheets[sn];if(!ws)return[];
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const su=sn.toUpperCase();
+  if(su==='ALL DRESS SHIRTS')return parseShirts(raw);
+  if(su==='JEANS')return parseJeans(raw);
+  if(su==='JACKETS ALL BRANDS')return parseJacketsAllBrands(raw);
+  if(su==='PANTS-MANTONI-LF')return parseMantoniPants(raw);
+  if(su==='MANTONI SUITS')return parseMantoniSuits(raw);
+  if(su==='VINCENZI SUITS')return parseVincenziSuits(raw);
+  if(su.includes('CARLO LUSSO')&&su.includes('SUIT'))return parseCarloSuits(raw);
+  if(su.includes('GIORGIO')&&su.includes('SUIT'))return parseGiorgioSuits(raw);
+  if(su==='SUIT'){
+    const title=String((raw[1]||[])[0]||'').toUpperCase();
+    return title.includes('ENZO')?parseEnzoSuits(raw):parseBertoliniSuits(raw);
+  }
+  if(su.includes('SUIT'))return parseBertoliniSuits(raw);
+  if(su.includes('PANTS'))return parseGiorgioPants(raw);
+  return[];
+}
+
+function parseBertoliniSuits(raw){
+  const secR=raw[4]||[],hdr=raw[5]||[];
+  let shortS=17,longS=26,aisleC=40,shipC=42;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  return buildStandardSuits(raw,6,hdr,shortS,longS,aisleC,shipC,'Bertolini');
+}
+
+function parseEnzoSuits(raw){
+  const secR=raw[4]||[],hdr=raw[7]||[];
+  let shortS=17,longS=26,aisleC=42,shipC=43;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE')aisleC=i;});
+  return buildStandardSuits(raw,8,hdr,shortS,longS,aisleC,shipC,'Enzo');
+}
+
+function parseVincenziSuits(raw){
+  const secR=raw[5]||[],hdr=raw[7]||[];
+  let shortS=17,longS=25,aisleC=38,shipC=39;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  return buildStandardSuits(raw,8,hdr,shortS,longS,aisleC,shipC,'Vincenzi',true);
+}
+
+function parseCarloSuits(raw){
+  const secR=raw[3]||[],hdr=raw[4]||[];
+  let shortS=19,longS=27,aisleC=43,shipC=45;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  return buildStandardSuits(raw,5,hdr,shortS,longS,aisleC,shipC,'Carlo Lusso');
+}
+
+function buildStandardSuits(raw,startRow,hdr,shortS,longS,aisleC,shipC,brand,priceInCol1=false){
+  const items=[];
+  for(let i=startRow;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
+    const flag=priceInCol1?null:(String(row[1]||'').trim()||null);
+    const model=String(row[2]||'').trim();if(isSkip(model))continue;
+    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    const reg=extractSizes(hdr,row,3,shortS-1);
+    const short=extractSizes(hdr,row,shortS,longS-1);
+    const long_=extractSizes(hdr,row,longS,aisleC-2);
+    if(!Object.keys(reg).length&&!Object.keys(short).length&&!Object.keys(long_).length)continue;
+    items.push({lot,flag:flag==='None'?null:flag,model,brand,category:cat,
+      aisle:normalizeAisle(row[aisleC]),shipdate:String(row[shipC]||''),
+      sizeSystem:getSizeSystem(model),regular:reg,short,long:long_});
+  }
+  return items;
+}
+
+function parseGiorgioSuits(raw){
+  const vestHdr=raw[4]||[],boysHdr=raw[5]||[],suitHdr=raw[6]||[];
+  const secR=raw[3]||[];
+  let shortS=24,longS=41,aisleC=61,shipC=63;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  const items=[];
+  for(let i=7;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
+    const flag=String(row[1]||'').trim()||null;
+    const model=String(row[2]||'').trim();if(isSkip(model))continue;
+    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    const sys=getSizeSystem(model);
+    const aisle=normalizeAisle(row[aisleC]);
+    const base={lot,flag:flag==='None'?null:flag,model,brand:'Giorgio Fiorelli',category:cat,aisle,shipdate:String(row[shipC]||''),sizeSystem:sys};
+    if(sys==='vest_xs'){const sz=extractSizes(vestHdr,row,3,23);if(!Object.keys(sz).length)continue;items.push({...base,sizes:sz});}
+    else if(sys==='boys_numeric'){const sz=extractSizes(boysHdr,row,24,35);if(!Object.keys(sz).length)continue;items.push({...base,sizes:sz});}
+    else if(sys==='boys_bxs'){const sz=extractSizes(boysHdr,row,3,7);if(!Object.keys(sz).length)continue;items.push({...base,sizes:sz});}
+    else{
+      const reg=extractSizes(suitHdr,row,3,shortS-1);
+      const short=extractSizes(suitHdr,row,shortS,longS-1);
+      const long_=extractSizes(suitHdr,row,longS,aisleC-2);
+      if(!Object.keys(reg).length&&!Object.keys(short).length&&!Object.keys(long_).length)continue;
+      items.push({...base,regular:reg,short,long:long_});
+    }
+  }
+  return items;
+}
+
+function parseGiorgioPants(raw){
+  const boysHdr=raw[4]||[],hdr=raw[5]||[];
+  const secR=raw[3]||[];
+  let shortS=25,longS=44,aisleC=67,shipC=69;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  const items=[];
+  for(let i=6;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();
+    if(!lot||lot.toUpperCase().includes('CARLO LUSSO'))continue;
+    const flag=String(row[1]||'').trim()||null;
+    const model=String(row[2]||'').trim();if(isSkip(model))continue;
+    const brand=lot.startsWith('C')?'Carlo Lusso':'Giorgio Fiorelli';
+    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    const sys=getSizeSystem(model);
+    const aisle=normalizeAisle(row[aisleC]);
+    if(sys==='boys_pants'){const sz=extractSizes(boysHdr,row,3,8);if(!Object.keys(sz).length)continue;items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),sizeSystem:sys,sizes:sz});}
+    else{
+      const reg=extractSizes(hdr,row,3,shortS-1);
+      const short=extractSizes(hdr,row,shortS,longS-1);
+      const long_=extractSizes(hdr,row,longS,aisleC-2);
+      if(!Object.keys(reg).length&&!Object.keys(short).length&&!Object.keys(long_).length)continue;
+      items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),sizeSystem:'standard',regular:reg,short,long:long_});
+    }
+  }
+  return items;
+}
+
+function parseMantoniSuits(raw){
+  const secR=raw[4]||[],shortSubHdr=raw[5]||[],hdr=raw[6]||[];
+  let shortS=19,longS=35,aisleC=50,shipC=52;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  const items=[];
+  for(let i=7;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
+    const flag=String(row[1]||'').trim()||null;
+    const model=String(row[2]||'').trim();if(isSkip(model))continue;
+    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    const sys=getSizeSystem(model);
+    const aisle=normalizeAisle(row[aisleC]);
+    const reg=extractSizes(hdr,row,3,shortS-1);
+    const short={};
+    for(let c=shortS;c<longS;c++){const lbl=shortSubHdr[c]||hdr[c];const val=row[c];if(lbl&&val&&typeof val==='number'&&val>0)short[String(lbl)]=safeInt(val);}
+    const long_=extractSizes(hdr,row,longS,aisleC-2);
+    if(!Object.keys(reg).length&&!Object.keys(short).length&&!Object.keys(long_).length)continue;
+    const sysActual=Object.keys(short).some(k=>k.includes('T'))?'mantoni_tshort':'standard';
+    items.push({lot,flag:flag==='None'?null:flag,model,brand:'Mantoni',category:cat,aisle,shipdate:String(row[shipC]||''),sizeSystem:'standard',regular:reg,short,long:long_});
+  }
+  return items;
+}
+
+function parseMantoniPants(raw){
+  const boysHdr=raw[3]||[],hdr=raw[4]||[];
+  const aisleC=20,shipC=22;
+  const items=[];
+  for(let i=5;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();
+    if(!lot||/ENZO PANTS|MANTONI/i.test(lot))continue;
+    const flag=String(row[1]||'').trim()||null;
+    const model=String(row[2]||'').trim();if(isSkip(model))continue;
+    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    const brand=lot.toUpperCase().startsWith('E')?'Enzo':'Mantoni';
+    const aisle=normalizeAisle(row[aisleC]);
+    if(/^BOYS-Pants/i.test(model)){
+      const sz={};
+      for(let c=3;c<=8;c++){const lbl=boysHdr[c];const val=row[c];if(lbl&&val&&typeof val==='number'&&val>0)sz[String(lbl)]=safeInt(val);}
+      if(!Object.keys(sz).length)continue;
+      items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),sizeSystem:'boys_tpants',sizes:sz});
+      continue;
+    }
+    const reg=extractSizes(hdr,row,3,17);
+    if(!Object.keys(reg).length)continue;
+    items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),sizeSystem:'standard',regular:reg,short:{},long:{}});
+  }
+  return items;
+}
+
+function parseJacketsAllBrands(raw){
+  const secR=raw[4]||[],hdr=raw[7]||[];
+  let shortS=17,longS=27,aisleC=40,shipC=41;
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  const brandMap={'MANTONI JACKETS:':'Mantoni','BERTOLINI JACKETS:':'Bertolini','ENZO JACKETS:':'Enzo'};
+  let currentBrand='Mantoni';
+  const items=[];
+  for(let i=8;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();if(!lot)continue;
+    if(brandMap[lot]){currentBrand=brandMap[lot];continue;}
+    if(lot.endsWith(':'))continue;
+    const flag=typeof row[1]==='number'?null:(String(row[1]||'').trim()||null);
+    const model=String(row[2]||'').trim();if(isSkip(model))continue;
+    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    const reg=extractSizes(hdr,row,3,shortS-1);
+    const short=extractSizes(hdr,row,shortS,longS-1);
+    const long_=extractSizes(hdr,row,longS,aisleC-2);
+    if(!Object.keys(reg).length&&!Object.keys(short).length&&!Object.keys(long_).length)continue;
+    items.push({lot,flag,model,brand:currentBrand,category:cat,
+      aisle:normalizeAisle(row[aisleC]),shipdate:String(row[shipC]||''),
+      sizeSystem:'standard',regular:reg,short,long:long_});
+  }
+  return items;
+}
+
+function parseShirts(raw){
+  const neckHdr=raw[7]||[];
+  const aisleC=38,shipC=39;
+  const sleeveSec=raw[4]||[];
+  const sleeveLabels={};
+  let curSleeve='';
+  for(let c=3;c<=37;c++){if(sleeveSec[c]!=null&&String(sleeveSec[c]).trim())curSleeve=String(sleeveSec[c]).replace(/\s/g,'');sleeveLabels[c]=curSleeve;}
+  const brandMap={'ENZO DRESS SHIRTS:':'Enzo','MANTONI 100% COTTON DRESS SHIRTS:':'Mantoni','LINEN SHIRTS':'Mantoni','GIORGIO FIORELLI DRESS SHIRTS:':'Giorgio Fiorelli','ADJUSTABLE CONVERTIBLE SHIRTS':'Giorgio Fiorelli'};
+  let currentBrand='Enzo',currentHdr=neckHdr,currentSleeveLabels=sleeveLabels;
+  const items=[];
+  for(let i=8;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();if(!lot)continue;
+    if(brandMap[lot]){
+      currentBrand=brandMap[lot];
+      const isSpec=lot==='LINEN SHIRTS'||lot==='ADJUSTABLE CONVERTIBLE SHIRTS';
+      if(isSpec){
+        currentHdr=raw[i+2]||raw[i+1]||neckHdr;
+        currentSleeveLabels={};
+        const nsec=raw[i+1]||[];
+        let cs='';
+        for(let c=0;c<Math.max(currentHdr.length,nsec.length);c++){if(nsec[c]!=null&&String(nsec[c]).trim())cs=String(nsec[c]).replace(/\s/g,'');if(currentHdr[c]!=null)currentSleeveLabels[c]=cs;}
+        i+=2;
+      }else{currentHdr=neckHdr;currentSleeveLabels=sleeveLabels;}
+      continue;
+    }
+    if(lot.endsWith(':'))continue;
+    const flag=String(row[1]||'').trim()||null;
+    const model=String(row[2]||'').trim();if(isSkip(model))continue;
+    const aisle=normalizeAisle(row[aisleC]);
+    const sizes={};
+    for(let c=3;c<=35;c++){
+      const neck=currentHdr[c];if(neck==null)continue;
+      const val=row[c];
+      if(val&&typeof val==='number'&&val>0){
+        const sleeve=currentSleeveLabels[c]||sleeveLabels[c]||'';
+        const lbl=sleeve?`${sleeve}/${neck}`:`${neck}`;
+        sizes[lbl]=(sizes[lbl]||0)+safeInt(val);
+      }
+    }
+    if(!Object.keys(sizes).length)continue;
+    items.push({lot,flag:flag==='None'?null:flag,model,brand:currentBrand,category:'Shirt',
+      aisle,shipdate:String(row[shipC]||''),sizeSystem:'shirt',sizes});
+  }
+  return items;
+}
+
+function parseJeans(raw){
+  const hdr=raw[3]||[];
+  const aisleC=17,shipC=19;
+  const items=[];
+  for(let i=4;i<raw.length;i++){
+    const row=raw[i];if(!row)continue;
+    const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
+    const styleVal=String(row[3]||'').trim();if(isSkip(styleVal)||isSkip(lot))continue;
+    if(styleVal&&styleVal.length>3)continue; // skip "will arrive" rows where col3 has notice text
+    const color=String(row[1]||'').trim();
+    const model=color||'Jean';
+    const aisle=normalizeAisle(row[aisleC]);
+    const sizes={};
+    for(let c=4;c<=15;c++){const sz=hdr[c];const val=row[c];if(sz!=null&&val&&typeof val==='number'&&val>0)sizes[String(sz)]=safeInt(val);}
+    if(!Object.keys(sizes).length)continue;
+    items.push({lot,flag:null,model,brand:'Enzo',category:'Jeans',aisle,shipdate:String(row[shipC]||''),sizeSystem:'jeans',sizes});
+  }
+  return items;
+}
+
+// ── Import ──
+async function importFile(file){
+  const pw=document.getElementById('prog-wrap'),pl=document.getElementById('prog-lbl'),pf=document.getElementById('prog-fill');
+  pw.classList.add('on');pf.style.width='10%';pl.textContent=`Reading ${file.name}…`;
+  const ab=await file.arrayBuffer();
+  pf.style.width='40%';pl.textContent='Parsing sheets…';
+  const wb=XLSX.read(ab,{type:'array'});
+  pf.style.width='60%';pl.textContent='Classifying items…';
+  let newItems=[],newUnc=[];
+  const skipSheets=new Set(['SHEET1','MAN60805 (2)','GF7.22.05','62805','CLOSE (2)','80605','CHART1','CHART2','CHART3','CHART4','CHART5']);
+  for(const sn of wb.SheetNames){
+    if(skipSheets.has(sn.toUpperCase())||sn.toUpperCase().startsWith('CHART'))continue;
+    const parsed=parseSheet(wb,sn);
+    parsed.forEach(item=>{if(item.category.startsWith('__'))newUnc.push(item);else newItems.push(item);});
+  }
+  pf.style.width='85%';pl.textContent='Saving…';
+  const key=i=>`${i.brand}||${i.lot}||${i.model}`;
+  const existK=new Set(inventory.map(key));
+  newItems.forEach(i=>{if(!existK.has(key(i))){inventory.push(i);existK.add(key(i));}});
+  const uKey=i=>`${i.brand}||${i.lot}||${i.model}`;
+  const existU=new Set(unclassified.map(uKey));
+  newUnc.forEach(i=>{if(!existU.has(uKey(i))){unclassified.push(i);existU.add(uKey(i));}});
+  importedFiles.push({name:file.name,itemCount:newItems.length,unclassCount:newUnc.length});
+  save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);
+  pf.style.width='100%';pl.textContent='Done!';
+  setTimeout(()=>pw.classList.remove('on'),1200);
+  renderFileList();renderFindPage();renderReviewNav();
+  showToast(`Imported ${newItems.length} items${newUnc.length?`, ${newUnc.length} need review`:''}`);
+}
+
+// ── Navigation ──
+function showPage(which){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+which).classList.add('active');
+  document.getElementById('nav-'+which).classList.add('active');
+  if(which==='list')renderPickList();
+  if(which==='review')renderReview();
+  if(which==='settings')renderSettings();
+}
+
+// ── Find page ──
+function renderFindPage(){
+  const hasInv=inventory.length>0;
+  document.getElementById('no-inv').style.display=hasInv?'none':'block';
+  document.getElementById('find-content').style.display=hasInv?'block':'none';
+  if(!hasInv)return;
+
+  // Brand chips
+  const brands=[...new Set(inventory.map(i=>i.brand))].sort();
+  const bcr=document.getElementById('cr-brand');bcr.innerHTML='';
+  brands.forEach(br=>{
+    const b=document.createElement('button');b.className='cb'+(F.brand===br?' active':'');b.textContent=br;
+    b.onclick=()=>{F.brand=br===F.brand?'':br;F.type='';F.lot='';F.style='';F.sizeType='';F.chipCounts={};renderFindPage();};
+    bcr.appendChild(b);
+  });
+
+  // Type chips
+  const types=[...new Set(inventory.filter(i=>!F.brand||i.brand===F.brand).map(i=>i.category))].filter(c=>CATEGORIES.includes(c)).sort((a,b)=>CATEGORIES.indexOf(a)-CATEGORIES.indexOf(b));
+  const tcr=document.getElementById('cr-type');tcr.innerHTML='';
+  types.forEach(t=>{
+    const b=document.createElement('button');b.className='cb'+(F.type===t?' active':'');b.textContent=t;
+    b.onclick=()=>{F.type=t===F.type?'':t;F.lot='';F.style='';F.sizeType='';F.chipCounts={};renderFindPage();};
+    tcr.appendChild(b);
+  });
+
+  // Lot dropdown
+  const sl=document.getElementById('sel-lot');
+  const lots=[...new Set(inventory.filter(i=>(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type)).map(i=>i.lot))].sort();
+  sl.innerHTML='<option value="">— Select a lot —</option>';
+  lots.forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;sl.appendChild(o);});
+  if(!lots.includes(F.lot))F.lot='';
+  sl.value=F.lot;
+
+  // Style dropdown
+  const ss=document.getElementById('sel-style');
+  const styles=inventory.filter(i=>i.lot===F.lot&&(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type));
+  ss.innerHTML='<option value="">— Select a style —</option>';
+  ss.disabled=!F.lot;
+  styles.forEach(item=>{const o=document.createElement('option');o.value=item.model;o.textContent=item.model+(item.flag?` [${item.flag}]`:'');ss.appendChild(o);});
+  if(!styles.some(i=>i.model===F.style))F.style='';
+  ss.value=F.style;
+
+  // Info card
+  const entry=getEntry();
+  const ic=document.getElementById('icard');
+  if(entry){
+    ic.classList.add('on');
+    document.getElementById('ic-aisle').textContent=entry.aisle!=null?`Aisle ${entry.aisle}`:'—';
+    document.getElementById('ic-brand').textContent=entry.brand||'—';
+    document.getElementById('ic-ship').textContent=entry.shipdate||'—';
+  }else ic.classList.remove('on');
+
+  // Size type chips
+  const stcr=document.getElementById('cr-sizetype');stcr.innerHTML='';
+  if(entry){
+    const sys=entry.sizeSystem;
+    if(sys==='standard'){
+      [['regular','Regular'],['short','Short'],['long','Long']].forEach(([k,lbl])=>{
+        if(entry[k]&&Object.keys(entry[k]).length){
+          const b=document.createElement('button');b.className='cb'+(F.sizeType===k?' active':'');b.textContent=lbl;b.dataset.type=k;
+          b.onclick=()=>{F.sizeType=k;F.chipCounts={};renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===k));};
+          stcr.appendChild(b);
+        }
+      });
+    }else{
+      const b=document.createElement('button');b.className='cb active';b.textContent='All Sizes';b.dataset.type='single';stcr.appendChild(b);
+      if(F.sizeType!=='single'){F.sizeType='single';F.chipCounts={};}
+    }
+  }
+  document.getElementById('sz-hint').style.display=entry&&F.sizeType?'block':'none';
+  renderSizeChips();updateAddBtn();
+}
+
+function getEntry(){return inventory.find(i=>i.lot===F.lot&&i.model===F.style&&(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type))||null;}
+
+function renderSizeChips(){
+  const grid=document.getElementById('sgrid');grid.innerHTML='';
+  if(!F.lot||!F.style||!F.sizeType){grid.innerHTML='<span class="sempty">Select brand, type, lot and style.</span>';return;}
+  const entry=getEntry();if(!entry){grid.innerHTML='<span class="sempty">No entry found.</span>';return;}
+  const sys=entry.sizeSystem;
+  const sizeMap=sys==='standard'?(entry[F.sizeType]||{}):(entry.sizes||{});
+  const keys=Object.keys(sizeMap).filter(k=>sizeMap[k]>0);
+  keys.sort((a,b)=>{const na=parseFloat(a),nb=parseFloat(b);return isNaN(na)||isNaN(nb)?a.localeCompare(b):na-nb;});
+  if(!keys.length){grid.innerHTML='<span class="sempty">No sizes available.</span>';return;}
+  keys.forEach(sz=>{
+    const stock=sizeMap[sz],count=F.chipCounts[sz]||0;
+    const chip=document.createElement('div');
+    chip.className='szchip'+(count>0?' counted':'');chip.dataset.size=sz;
+    chip.innerHTML=`<span class="cbadge${count>0?' on':''}">${count||''}</span><button class="cclr${count>0?' on':''}" data-sz="${sz}" tabindex="-1">×</button><span class="csz">${sz}</span><span class="cst">qty ${stock}</span>`;
+    chip.addEventListener('click',e=>{if(e.target.classList.contains('cclr'))return;tapChip(sz,chip,stock);});
+    chip.querySelector('.cclr').addEventListener('click',e=>{e.stopPropagation();clearChip(sz,chip);});
+    grid.appendChild(chip);
+  });
+}
+
+function tapChip(sz,el,stock){
+  const next=(F.chipCounts[sz]||0)+1;
+  if(next>stock){showToast(`Max ${stock} in stock for size ${sz}`,'#555');return;}
+  F.chipCounts[sz]=next;el.classList.add('counted');el.classList.remove('bounce');void el.offsetWidth;el.classList.add('bounce');
+  const b=el.querySelector('.cbadge'),c=el.querySelector('.cclr');b.textContent=next;b.classList.add('on');c.classList.add('on');updateAddBtn();
+}
+
+function clearChip(sz,el){
+  delete F.chipCounts[sz];el.classList.remove('counted');
+  const b=el.querySelector('.cbadge'),c=el.querySelector('.cclr');b.textContent='';b.classList.remove('on');c.classList.remove('on');updateAddBtn();
+}
+
+function updateAddBtn(){document.getElementById('add-btn').disabled=!Object.values(F.chipCounts).some(v=>v>0);}
+
+function onAddToList(){
+  const entry=getEntry();if(!entry)return;
+  let added=0,updated=0;
+  const sys=entry.sizeSystem;
+  const sizeMap=sys==='standard'?(entry[F.sizeType]||{}):(entry.sizes||{});
+  const stLabel=F.sizeType==='single'?'—':F.sizeType;
+  Object.entries(F.chipCounts).forEach(([sz,count])=>{
+    if(!count)return;
+    const stock=sizeMap[sz]||0;
+    const dup=pickList.find(p=>p.lot===F.lot&&p.model===F.style&&p.sizeType===stLabel&&p.size===sz);
+    if(dup){dup.ordered=count;updated++;}
+    else{pickList.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),lot:F.lot,flag:entry.flag,model:F.style,brand:entry.brand,category:entry.category,sizeType:stLabel,size:sz,qty:stock,aisle:entry.aisle,ordered:count});added++;}
+  });
+  F.chipCounts={};save(SK.picklist,pickList);renderSizeChips();updateAddBtn();updateNavPill();
+  const parts=[];if(added)parts.push(`${added} item${added>1?'s':''} added`);if(updated)parts.push(`${updated} updated`);
+  showToast(parts.join(', ')||'Done');
+}
+
+// ── Pick list ──
+const TL={regular:'R',short:'S',long:'L','—':'—'};
+
+function renderPickList(){
+  const body=document.getElementById('picklist-body'),stats=document.getElementById('lstats');
+  if(!pickList.length){body.innerHTML='<div class="emptystate"><div class="emptyicon">📋</div><p>Add items from the Find tab. Sorted by aisle.</p></div>';stats.textContent='No items yet';return;}
+  const sorted=[...pickList].sort((a,b)=>{
+    const[ta,na,sa]=aisleSortKey(a.aisle),[tb,nb,sb]=aisleSortKey(b.aisle);
+    if(ta!==tb)return ta-tb;if(na!==nb)return na-nb;if(sa!==sb)return sa<sb?-1:1;
+    return a.lot<b.lot?-1:a.lot>b.lot?1:0;
+  });
+  const byAisle={},aisleOrder=[];
+  sorted.forEach(item=>{const k=item.aisle!=null?String(item.aisle):'Unknown';if(!byAisle[k]){byAisle[k]=[];aisleOrder.push(k);}byAisle[k].push(item);});
+  const n=sorted.length,na=aisleOrder.length;
+  stats.innerHTML=`<strong>${n}</strong> item${n!==1?'s':''} across <strong>${na}</strong> aisle${na!==1?'s':''}`;
+  let html=`<div class="pcols"><span>Type</span><span>Size</span><span>Ordered</span><span>In Stock</span><span></span></div>`;
+  aisleOrder.forEach(aisle=>{
+    const ai=byAisle[aisle],byLot={},lotOrder=[];
+    ai.forEach(item=>{const k=item.lot+'||'+item.model;if(!byLot[k]){byLot[k]=[];lotOrder.push(k);}byLot[k].push(item);});
+    html+=`<div class="ag"><div class="ah"><span class="albl">Aisle</span><span class="anum">${aisle}</span><span class="acnt">${ai.length} item${ai.length!==1?'s':''}</span></div>`;
+    lotOrder.forEach(key=>{
+      const items=byLot[key],rep=items[0];
+      const fh=rep.flag?`<span class="fbadge f${rep.flag}">${rep.flag}</span>`:'';
+      html+=`<div class="lsg"><div class="lsh">${fh}<span class="lshlot">${rep.lot}</span><span class="lshmod">— ${rep.model}</span></div>`;
+      items.forEach(item=>{
+        const oc=item.ordered>0?'ocount hc':'ocount',ol=item.ordered>0?item.ordered:'—';
+        const tl=TL[item.sizeType]||item.sizeType;
+        html+=`<div class="prow" data-id="${item.id}"><div class="ptyp">${tl}</div><div class="psz">${item.size}</div><div><span class="${oc}">${ol}</span></div><div><span class="qbadge">${item.qty}</span></div><button class="rbtn" onclick="removeItem('${item.id}')">×</button></div>`;
+      });
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  });
+  body.innerHTML=html;
+}
+
+function removeItem(id){pickList=pickList.filter(p=>p.id!==id);save(SK.picklist,pickList);updateNavPill();renderPickList();}
+function clearPickList(){pickList=[];save(SK.picklist,pickList);updateNavPill();renderPickList();}
+
+function updateNavPill(){
+  const n=pickList.length;
+  document.getElementById('npill').textContent=n;document.getElementById('npill').classList.toggle('on',n>0);
+  const hb=document.getElementById('hbadge');hb.textContent=n>0?`${n} in list`:'';hb.classList.toggle('on',n>0);
+}
+
+// ── Review ──
+function renderReviewNav(){
+  const n=unclassified.length;
+  document.getElementById('nav-review').style.display=n>0?'flex':'none';
+  document.getElementById('rev-pill').textContent=n>0?n:'!';
+}
+
+function renderReview(){
+  const list=document.getElementById('review-list');
+  if(!unclassified.length){list.innerHTML='<div class="emptystate"><div class="emptyicon" style="font-size:2rem">✓</div><p>All items classified!</p></div>';return;}
+  list.innerHTML='';
+  unclassified.forEach((item,idx)=>{
+    const card=document.createElement('div');card.className='rcard';
+    card.innerHTML=`<div class="rc-hd"><div class="rc-lot">${item.lot}</div><div class="rc-model">${item.model}</div><div class="rc-brand">${item.brand}</div></div><div class="rc-cats">${CATEGORIES.map(c=>`<button class="catbtn" data-cat="${c}" onclick="selRevCat(this,${idx})">${c}</button>`).join('')}</div><div class="rc-foot"><button class="rc-conf" id="rc-conf-${idx}" onclick="confirmReview(${idx})">Confirm</button><button class="rc-skip" onclick="skipReview(${idx})">Skip</button></div>`;
+    list.appendChild(card);
+  });
+}
+
+function selRevCat(btn,idx){
+  btn.closest('.rcard').querySelectorAll('.catbtn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');
+  const conf=document.getElementById(`rc-conf-${idx}`);if(conf){conf.classList.add('ready');conf.dataset.cat=btn.dataset.cat;}
+}
+
+function confirmReview(idx){
+  const conf=document.getElementById(`rc-conf-${idx}`);if(!conf||!conf.dataset.cat)return;
+  const cat=conf.dataset.cat,item=unclassified[idx];
+  memory[item.model]=cat;save(SK.memory,memory);item.category=cat;inventory.push(item);save(SK.inventory,inventory);
+  unclassified.splice(idx,1);save(SK.unclassified,unclassified);
+  renderReviewNav();renderReview();renderFindPage();showToast(`${item.model} → ${cat}`);
+}
+
+function skipReview(idx){unclassified.push(unclassified.splice(idx,1)[0]);save(SK.unclassified,unclassified);renderReview();}
+
+// ── Settings ──
+function renderSettings(){renderFileList();renderRulesEditor();}
+function renderFileList(){
+  const fl=document.getElementById('flist');fl.innerHTML='';
+  importedFiles.forEach((f,idx)=>{
+    const div=document.createElement('div');div.className='fitem';
+    div.innerHTML=`<div class="fiico">📄</div><div class="finame">${f.name}</div><div class="ficnt">${f.itemCount} items${f.unclassCount?`, ${f.unclassCount} need review`:''}</div><button class="firem" onclick="removeFile(${idx})">×</button>`;
+    fl.appendChild(div);
+  });
+}
+function removeFile(idx){importedFiles.splice(idx,1);save(SK.files,importedFiles);renderFileList();showToast('File removed from list');}
+function renderRulesEditor(){
+  const ed=document.getElementById('rules-editor');
+  const entries=Object.entries(memory);
+  if(!entries.length){ed.innerHTML='<div style="font-size:.75rem;color:var(--muted);font-style:italic">No learned classifications yet.</div>';return;}
+  ed.innerHTML='';
+  entries.sort((a,b)=>a[0].localeCompare(b[0])).forEach(([model,cat])=>{
+    const row=document.createElement('div');row.className='ce-row';
+    const opts=CATEGORIES.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('');
+    row.innerHTML=`<div><div class="ce-model">${model}</div></div><select class="ce-sel" onchange="updateMemory(this)">${opts}</select>`;
+    row.querySelector('.ce-sel').dataset.model=model;ed.appendChild(row);
+  });
+}
+function updateMemory(sel){
+  const model=sel.dataset.model,cat=sel.value;memory[model]=cat;save(SK.memory,memory);
+  inventory.forEach(i=>{if(i.model===model)i.category=cat;});save(SK.inventory,inventory);renderFindPage();showToast(`Updated: ${model} → ${cat}`);
+}
+function clearInventory(){if(!confirm('Clear all imported inventory? Files will need re-uploading.'))return;inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared');}
+function clearMemory(){if(!confirm('Clear all learned classifications?'))return;memory={};save(SK.memory,memory);renderSettings();showToast('Classification memory cleared');}
+function resetAll(){
+  if(!confirm('Reset everything?'))return;
+  inventory=[];unclassified=[];memory={};pickList=[];importedFiles=[];
+  Object.values(SK).forEach(k=>localStorage.removeItem(k));
+  F.brand='';F.type='';F.lot='';F.style='';F.sizeType='';F.chipCounts={};
+  renderFindPage();renderPickList();renderReviewNav();renderSettings();updateNavPill();showToast('Everything reset');
+}
+
+function showToast(msg,bg){const t=document.getElementById('toast');t.textContent=msg;t.style.background=bg||'var(--accent)';t.classList.add('on');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('on'),2400);}
+
+function init(){
+  document.getElementById('sel-lot').addEventListener('change',e=>{F.lot=e.target.value;F.style='';F.sizeType='';F.chipCounts={};renderFindPage();});
+  document.getElementById('sel-style').addEventListener('change',e=>{F.style=e.target.value;F.sizeType='';F.chipCounts={};renderFindPage();});
+  document.getElementById('add-btn').addEventListener('click',onAddToList);
+  document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
+  document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
+  document.getElementById('clear-mem-btn').addEventListener('click',clearMemory);
+  document.getElementById('reset-all-btn').addEventListener('click',resetAll);
+  document.getElementById('file-input').addEventListener('change',async e=>{for(const f of e.target.files)await importFile(f);e.target.value='';});
+  renderFindPage();renderReviewNav();updateNavPill();
+}
+init();
+</script>
+</body>
+</html>
