@@ -90,7 +90,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .lsh{display:flex;align-items:center;gap:7px;padding:6px 13px 6px 24px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(46,46,46,.5)}
 .lshlot{font-size:.8rem;font-weight:700;color:var(--text)}
 .lshmod{font-size:.72rem;color:var(--muted)}
-.prow{display:grid;grid-template-columns:44px 70px 1fr 60px 28px;align-items:center;gap:9px;padding:9px 13px 9px 36px;border-bottom:1px solid rgba(46,46,46,.3);transition:background .1s}
+.prow{display:grid;grid-template-columns:44px 70px 1fr 60px 62px;align-items:center;gap:9px;padding:9px 13px 9px 36px;border-bottom:1px solid rgba(46,46,46,.3);transition:background .1s}
 .prow:last-child{border-bottom:none}
 .prow:hover{background:rgba(200,169,110,.03)}
 .ptyp{font-size:.88rem;font-weight:700;color:var(--text)}
@@ -98,9 +98,9 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .ocount{font-size:.8rem;font-weight:700;color:var(--muted);background:var(--s2);border:1.5px dashed var(--border);border-radius:5px;min-width:28px;height:25px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .ocount.hc{background:#1e3010;border:1.5px solid #5a8a2a;color:#9dcc4a}
 .qbadge{background:var(--green);border:1px solid var(--greent);border-radius:5px;color:var(--greent);font-weight:700;font-size:.78rem;padding:3px 7px;text-align:center}
-.rbtn{background:transparent;border:1px solid #3a2020;border-radius:5px;color:#665555;font-size:.82rem;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0}
-.rbtn:hover{background:var(--red);border-color:var(--red);color:#fff}
-.pcols{display:grid;grid-template-columns:44px 70px 1fr 60px 28px;gap:9px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+.rbtn{background:transparent;border:1px solid #1a4a1a;border-radius:5px;color:#4a8a4a;font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0 8px;white-space:nowrap}
+.rbtn:hover{background:var(--green);border-color:var(--greent);color:var(--greent)}
+.pcols{display:grid;grid-template-columns:44px 70px 1fr 60px 62px;gap:9px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
 .pcols span{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
 .emptystate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;color:var(--muted);padding:50px 20px;text-align:center}
 .emptyicon{font-size:2.6rem;opacity:.2}
@@ -896,7 +896,7 @@ function renderPickList(){
       items.forEach(item=>{
         const oc=item.ordered>0?'ocount hc':'ocount',ol=item.ordered>0?item.ordered:'—';
         const tl=TL[item.sizeType]||item.sizeType;
-        html+=`<div class="prow" data-id="${item.id}"><div class="ptyp">${tl}</div><div class="psz">${item.size}</div><div><span class="${oc}">${ol}</span></div><div><span class="qbadge">${item.qty}</span></div><button class="rbtn" onclick="removeItem('${item.id}')">×</button></div>`;
+        html+=`<div class="prow" data-id="${item.id}"><div class="ptyp">${tl}</div><div class="psz">${item.size}</div><div><span class="${oc}">${ol}</span></div><div><span class="qbadge">${item.qty}</span></div><button class="rbtn" onclick="removeItem('${item.id}')">Picked</button></div>`;
       });
       html+=`</div>`;
     });
