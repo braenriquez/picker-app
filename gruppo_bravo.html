@@ -32,7 +32,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .nb.active::after{content:'';position:absolute;top:0;left:22%;right:22%;height:2px;background:var(--accent);border-radius:0 0 3px 3px}
 .npill{position:absolute;top:5px;right:calc(50% - 24px);background:#cc2222;color:#fff;font-size:.58rem;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg)}
 .npill.on{display:flex}
-.page{display:none;padding:18px 18px calc(var(--nav-h)+18px);max-width:760px;margin:0 auto}
+.page{display:none;padding:18px 18px calc(var(--nav-h)+80px);max-width:760px;margin:0 auto}
 .page.active{display:block}
 .slabel{font-size:.63rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:7px;display:block}
 .fgroup{margin-bottom:18px}
@@ -67,7 +67,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .addbtn:hover{background:var(--accent2)}
 .addbtn:active{transform:scale(.98)}
 .addbtn:disabled{opacity:.28;cursor:not-allowed;transform:none}
-.add-btn-wrap{position:sticky;bottom:calc(var(--nav-h)+8px);z-index:50;padding-top:14px;background:linear-gradient(to bottom,rgba(15,15,15,0) 0%,var(--bg) 35%)}
+.add-btn-wrap{position:fixed;bottom:calc(var(--nav-h)+8px);left:0;right:0;z-index:50;padding:14px 18px 0;background:linear-gradient(to bottom,rgba(15,15,15,0) 0%,var(--bg) 35%)}
 .fbadge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:.67rem;font-weight:700;flex-shrink:0}
 .fC{background:var(--bluebg);color:var(--bluet)}.fP{background:var(--greenbg);color:var(--greenbt)}
 .ptopbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
@@ -298,7 +298,7 @@ let unclassified=load(SK.unclassified,[]);
 let memory=load(SK.memory,{});
 let pickList=load(SK.picklist,[]);
 let importedFiles=load(SK.files,[]);
-const F={brand:'',type:'',lot:'',style:'',sizeType:'',chipCountsByType:{}};
+const F={brand:'',type:'',lot:'',style:'',sizeType:'',chipCounts:{}};
 
 function classifyModel(m){
   if(memory[m])return memory[m];
@@ -381,7 +381,7 @@ function parseBertoliniSuits(raw){
 function parseEnzoSuits(raw){
   const secR=raw[4]||[],hdr=raw[7]||[];
   let shortS=17,longS=26,aisleC=42,shipC=43;
-  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE')aisleC=i;});
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
   return buildStandardSuits(raw,8,hdr,shortS,longS,aisleC,shipC,'Enzo');
 }
 
@@ -654,10 +654,11 @@ function showPage(which){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+which).classList.add('active');
-  document.getElementById('nav-'+which).classList.add('active');
+  const navEl=document.getElementById('nav-'+which);if(navEl)navEl.classList.add('active');
   if(which==='list')renderPickList();
   if(which==='review')renderReview();
   if(which==='settings')renderSettings();
+  if(which==='classifications')renderClassificationsPage();
 }
 
 // ── Find page ──
@@ -687,7 +688,7 @@ function renderFindPage(){
 
   // Lot dropdown
   const sl=document.getElementById('sel-lot');
-  const lots=[...new Set(inventory.filter(i=>(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type)).map(i=>i.lot))].sort();
+  const lots=[...new Set(inventory.filter(i=>(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type)).map(i=>i.lot))];
   sl.innerHTML='<option value="">— Select a lot —</option>';
   lots.forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;sl.appendChild(o);});
   if(!lots.includes(F.lot))F.lot='';
@@ -700,6 +701,7 @@ function renderFindPage(){
   ss.disabled=!F.lot;
   styles.forEach(item=>{const o=document.createElement('option');o.value=item.model;o.textContent=item.model+(item.flag?` [${item.flag}]`:'');ss.appendChild(o);});
   if(!styles.some(i=>i.model===F.style))F.style='';
+  if(!F.style&&styles.length>0){F.style=styles[0].model;}
   ss.value=F.style;
 
   // Info card
@@ -720,10 +722,27 @@ function renderFindPage(){
       [['regular','Regular'],['short','Short'],['long','Long']].forEach(([k,lbl])=>{
         if(entry[k]&&Object.keys(entry[k]).length){
           const b=document.createElement('button');b.className='cb'+(F.sizeType===k?' active':'');b.textContent=lbl;b.dataset.type=k;
-          b.onclick=()=>{F.sizeType=k;F.chipCounts={};renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===k));};
+          b.onclick=()=>{F.sizeType=k;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===k));};
           stcr.appendChild(b);
         }
       });
+    }else if(sys==='shirt'){
+      const sleeveGroups={};
+      Object.entries(entry.sizes||{}).forEach(([lbl,qty])=>{
+        if(qty<=0)return;
+        const slash=lbl.indexOf('/');
+        const sleeve=slash>0?lbl.slice(0,slash):'Other';
+        const neck=slash>0?lbl.slice(slash+1):lbl;
+        if(!sleeveGroups[sleeve])sleeveGroups[sleeve]={};
+        sleeveGroups[sleeve][neck]=(sleeveGroups[sleeve][neck]||0)+qty;
+      });
+      const sleeves=Object.keys(sleeveGroups).sort((a,b)=>{const na=parseFloat(a),nb=parseFloat(b);return isNaN(na)||isNaN(nb)?a.localeCompare(b):na-nb;});
+      sleeves.forEach(sl=>{
+        const b=document.createElement('button');b.className='cb'+(F.sizeType===sl?' active':'');b.textContent=sl;b.dataset.type=sl;
+        b.onclick=()=>{F.sizeType=sl;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===sl));};
+        stcr.appendChild(b);
+      });
+      if(!sleeves.includes(F.sizeType)){F.sizeType=sleeves[0]||'';const first=stcr.querySelector('.cb');if(first)first.classList.add('active');}
     }else{
       const b=document.createElement('button');b.className='cb active';b.textContent='All Sizes';b.dataset.type='single';stcr.appendChild(b);
       if(F.sizeType!=='single'){F.sizeType='single';F.chipCounts={};}
@@ -740,7 +759,10 @@ function renderSizeChips(){
   if(!F.lot||!F.style||!F.sizeType){grid.innerHTML='<span class="sempty">Select brand, type, lot and style.</span>';return;}
   const entry=getEntry();if(!entry){grid.innerHTML='<span class="sempty">No entry found.</span>';return;}
   const sys=entry.sizeSystem;
-  const sizeMap=sys==='standard'?(entry[F.sizeType]||{}):(entry.sizes||{});
+  let sizeMap;
+  if(sys==='standard'){sizeMap=entry[F.sizeType]||{};}
+  else if(sys==='shirt'){sizeMap={};const pref=F.sizeType+'/';Object.entries(entry.sizes||{}).forEach(([lbl,qty])=>{if(lbl.startsWith(pref))sizeMap[lbl.slice(pref.length)]=(sizeMap[lbl.slice(pref.length)]||0)+qty;else if(lbl.indexOf('/')<0&&F.sizeType==='Other')sizeMap[lbl]=(sizeMap[lbl]||0)+qty;});}
+  else{sizeMap=entry.sizes||{};}
   const keys=Object.keys(sizeMap).filter(k=>sizeMap[k]>0);
   keys.sort((a,b)=>{const na=parseFloat(a),nb=parseFloat(b);return isNaN(na)||isNaN(nb)?a.localeCompare(b):na-nb;});
   if(!keys.length){grid.innerHTML='<span class="sempty">No sizes available.</span>';return;}
@@ -773,7 +795,10 @@ function onAddToList(){
   const entry=getEntry();if(!entry)return;
   let added=0,updated=0;
   const sys=entry.sizeSystem;
-  const sizeMap=sys==='standard'?(entry[F.sizeType]||{}):(entry.sizes||{});
+  let sizeMap;
+  if(sys==='standard'){sizeMap=entry[F.sizeType]||{};}
+  else if(sys==='shirt'){sizeMap={};const pref=F.sizeType+'/';Object.entries(entry.sizes||{}).forEach(([lbl,qty])=>{if(lbl.startsWith(pref))sizeMap[lbl.slice(pref.length)]=(sizeMap[lbl.slice(pref.length)]||0)+qty;else if(lbl.indexOf('/')<0&&F.sizeType==='Other')sizeMap[lbl]=(sizeMap[lbl]||0)+qty;});}
+  else{sizeMap=entry.sizes||{};}
   const stLabel=F.sizeType==='single'?'—':F.sizeType;
   Object.entries(F.chipCounts).forEach(([sz,count])=>{
     if(!count)return;
@@ -866,7 +891,7 @@ function confirmReview(idx){
 function skipReview(idx){unclassified.push(unclassified.splice(idx,1)[0]);save(SK.unclassified,unclassified);renderReview();}
 
 // ── Settings ──
-function renderSettings(){renderFileList();renderRulesEditor();}
+function renderSettings(){renderFileList();}
 function renderFileList(){
   const fl=document.getElementById('flist');fl.innerHTML='';
   importedFiles.forEach((f,idx)=>{
@@ -900,6 +925,86 @@ function resetAll(){
   Object.values(SK).forEach(k=>localStorage.removeItem(k));
   F.brand='';F.type='';F.lot='';F.style='';F.sizeType='';F.chipCounts={};
   renderFindPage();renderPickList();renderReviewNav();renderSettings();updateNavPill();showToast('Everything reset');
+}
+
+// ── Classifications page ──
+function renderClassificationsPage(){
+  // Section 1: Needs Review
+  const rev=document.getElementById('cl-review-section');
+  rev.innerHTML=`<div class="cl-section-hdr">Needs Review <span>${unclassified.length}</span></div>`;
+  if(!unclassified.length){rev.innerHTML+='<div class="cl-empty">No items need review.</div>';}
+  else{
+    unclassified.forEach((item,_)=>{
+      const opts=CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('');
+      const row=document.createElement('div');row.className='ce-row';
+      row.innerHTML=`<div class="ce-model" style="color:var(--reviewt)">${item.model}<div style="font-size:.65rem;color:var(--muted)">${item.lot} · ${item.brand}</div></div><select class="ce-sel"><option value="">— assign —</option>${opts}</select>`;
+      const sel=row.querySelector('.ce-sel');
+      sel.addEventListener('change',()=>{
+        if(!sel.value)return;
+        const idx=unclassified.findIndex(u=>u.brand===item.brand&&u.lot===item.lot&&u.model===item.model);
+        if(idx<0)return;
+        classifyReviewItem(sel.value,idx);
+      });
+      rev.appendChild(row);
+    });
+  }
+  // Section 2: Learned
+  const mem=document.getElementById('cl-memory-section');
+  const memEntries=Object.entries(memory).sort((a,b)=>a[0].localeCompare(b[0]));
+  mem.innerHTML=`<div class="cl-section-hdr">Learned Classifications <span>${memEntries.length}</span></div>`;
+  if(!memEntries.length){mem.innerHTML+='<div class="cl-empty">No learned classifications yet.</div>';}
+  else{
+    memEntries.forEach(([model,cat])=>{
+      const opts=CATEGORIES.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('');
+      const row=document.createElement('div');row.className='ce-row';
+      row.innerHTML=`<div class="ce-model">${model}</div><select class="ce-sel">${opts}</select><button class="firem" title="Remove">×</button>`;
+      const sel=row.querySelector('.ce-sel');sel.dataset.model=model;
+      sel.addEventListener('change',()=>updateMemory(sel));
+      row.querySelector('.firem').addEventListener('click',()=>removeMemory(model,row));
+      mem.appendChild(row);
+    });
+  }
+  // Section 3: Auto-classified
+  const auto=document.getElementById('cl-auto-section');
+  const seen=new Set();
+  const autoItems=inventory.filter(i=>{
+    if(seen.has(i.model)||memory[i.model])return false;
+    seen.add(i.model);return true;
+  }).sort((a,b)=>a.model.localeCompare(b.model));
+  auto.innerHTML=`<div class="cl-section-hdr">Auto-classified <span>${autoItems.length}</span></div>`;
+  if(!autoItems.length){auto.innerHTML+='<div class="cl-empty">No auto-classified items.</div>';}
+  else{
+    autoItems.forEach(item=>{
+      const cat=item.category;
+      const opts=CATEGORIES.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('');
+      const rule=DEFAULT_RULES.find(r=>{try{return new RegExp(r.p,'i').test(item.model)}catch{return false}});
+      const ruleTag=rule?`<span class="ce-rule-tag">${rule.c}</span>`:'';
+      const row=document.createElement('div');row.className='ce-row ce-auto';
+      row.innerHTML=`<div class="ce-model">${item.model}${ruleTag}</div><select class="ce-sel">${opts}</select>`;
+      const sel=row.querySelector('.ce-sel');sel.dataset.model=item.model;
+      sel.addEventListener('change',()=>overrideAuto(sel));
+      auto.appendChild(row);
+    });
+  }
+}
+function classifyReviewItem(cat,idx){
+  const item=unclassified[idx];
+  memory[item.model]=cat;save(SK.memory,memory);
+  item.category=cat;inventory.push(item);save(SK.inventory,inventory);
+  unclassified.splice(idx,1);save(SK.unclassified,unclassified);
+  renderReviewNav();renderClassificationsPage();renderFindPage();
+  showToast(`${item.model} → ${cat}`);
+}
+function removeMemory(model,row){
+  delete memory[model];save(SK.memory,memory);row.remove();
+  inventory.forEach(i=>{if(i.model===model)i.category=classifyModel(model);});
+  save(SK.inventory,inventory);renderFindPage();showToast(`Removed: ${model}`);
+}
+function overrideAuto(sel){
+  const model=sel.dataset.model,cat=sel.value;
+  memory[model]=cat;save(SK.memory,memory);
+  inventory.forEach(i=>{if(i.model===model)i.category=cat;});
+  save(SK.inventory,inventory);renderFindPage();showToast(`${model} → ${cat} (learned)`);
 }
 
 function showToast(msg,bg){const t=document.getElementById('toast');t.textContent=msg;t.style.background=bg||'var(--accent)';t.classList.add('on');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('on'),2400);}
