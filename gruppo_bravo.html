@@ -343,8 +343,10 @@ function findTTLCol(hdr){for(let i=0;i<hdr.length;i++){if(String(hdr[i]||'').tri
 function normalizeAisle(v){
   if(v==null)return null;
   if(typeof v==='number')return Math.round(v);
-  const s=String(v).trim();
+  let s=String(v).trim();
   if(!s||s==='0')return null;
+  s=s.replace(/^\s*aisle\s*/i,'').trim();
+  if(!s)return null;
   const n=parseFloat(s);
   if(!isNaN(n)&&String(n)===s)return Math.round(n);
   return s;
@@ -753,7 +755,7 @@ function renderFindPage(){
   const ic=document.getElementById('icard');
   if(entry){
     ic.classList.add('on');
-    document.getElementById('ic-aisle').textContent=entry.aisle!=null?`Aisle ${entry.aisle}`:'—';
+    document.getElementById('ic-aisle').textContent=entry.aisle!=null?String(entry.aisle):'—';
     document.getElementById('ic-brand').textContent=entry.brand||'—';
     const hasTTL=entry.ttl!=null&&entry.ttl>0;
     document.getElementById('ic-ship-lbl').textContent=hasTTL?'In Stock':'Shipment Date';
