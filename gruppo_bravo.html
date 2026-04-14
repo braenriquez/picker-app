@@ -242,8 +242,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
     <div class="ss-hdr">Danger Zone</div>
     <div class="ss-body">
       <div class="ss-row"><div><div class="ss-lbl">Clear All Inventory</div><div class="ss-sub">Remove all imported data. Files need re-uploading.</div></div><button class="btn-d" id="clear-inv-btn">Clear Inventory</button></div>
-      <div class="ss-row" style="margin-top:6px"><div><div class="ss-lbl">Clear Classification Memory</div><div class="ss-sub">Reset all learned model→category assignments.</div></div><button class="btn-d" id="clear-mem-btn">Clear Memory</button></div>
-      <div class="ss-row" style="margin-top:6px"><div><div class="ss-lbl">Reset Everything</div><div class="ss-sub">Clear all inventory, classifications, pick list and settings.</div></div><button class="btn-d" id="reset-all-btn">Reset All</button></div>
     </div>
   </div>
 </div>
@@ -975,14 +973,6 @@ function updateMemory(sel){
   inventory.forEach(i=>{if(i.model===model)i.category=cat;});save(SK.inventory,inventory);renderFindPage();showToast(`Updated: ${model} → ${cat}`);
 }
 function clearInventory(){if(!confirm('Clear all imported inventory? Files will need re-uploading.'))return;inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared');}
-function clearMemory(){if(!confirm('Clear all learned classifications?'))return;memory={};save(SK.memory,memory);renderSettings();showToast('Classification memory cleared');}
-function resetAll(){
-  if(!confirm('Reset everything?'))return;
-  inventory=[];unclassified=[];memory={};pickList=[];importedFiles=[];
-  Object.values(SK).forEach(k=>localStorage.removeItem(k));
-  F.brand='';F.type='';F.lot='';F.style='';F.sizeType='';F.chipCountsByType={};
-  renderFindPage();renderPickList();renderReviewNav();renderSettings();updateNavPill();showToast('Everything reset');
-}
 
 // ── Classifications page ──
 function renderClassificationsPage(){
@@ -1072,8 +1062,6 @@ function init(){
   document.getElementById('add-btn').addEventListener('click',onAddToList);
   document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
   document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
-  document.getElementById('clear-mem-btn').addEventListener('click',clearMemory);
-  document.getElementById('reset-all-btn').addEventListener('click',resetAll);
   document.getElementById('file-input').addEventListener('change',async e=>{for(const f of e.target.files)await importFile(f);e.target.value='';});
   renderFindPage();renderReviewNav();updateNavPill();
 }
