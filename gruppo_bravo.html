@@ -381,7 +381,10 @@ function parseBertoliniSuits(raw){
 function parseEnzoSuits(raw){
   const secR=raw[4]||[],hdr=raw[7]||[];
   let shortS=17,longS=26,aisleC=42,shipC=43;
-  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;});
+  // Enzo: AISLE label is in hdr (row7), actual data is one column to the right
+  const ha=hdr.findIndex((v,i)=>i>30&&String(v||'').toUpperCase()==='AISLE');
+  if(ha>=0)aisleC=ha+1;
   return buildStandardSuits(raw,8,hdr,shortS,longS,aisleC,shipC,'Enzo');
 }
 
@@ -557,8 +560,14 @@ function parseShirts(raw){
   const aisleC=38,shipC=39;
   const sleeveSec=raw[4]||[];
   const sleeveLabels={};
-  let curSleeve='';
-  for(let c=3;c<=37;c++){if(sleeveSec[c]!=null&&String(sleeveSec[c]).trim())curSleeve=String(sleeveSec[c]).replace(/\s/g,'');sleeveLabels[c]=curSleeve;}
+  // Collect sleeve labels in order from row4, normalizing "32 / 33" → "32-33"
+  const slvLbls=[];
+  for(let c=3;c<=37;c++){const v=sleeveSec[c];if(v!=null&&String(v).trim())slvLbls.push(String(v).trim().replace(/\s/g,'').replace(/\//g,'-'));}
+  // Detect group boundaries: where neck values reset (decrease) in neckHdr
+  const groupStarts=[3];let prevN=-1;
+  for(let c=4;c<=36;c++){const v=neckHdr[c];if(v==null)continue;const n=parseFloat(String(v));if(!isNaN(n)&&prevN>0&&n<prevN)groupStarts.push(c);if(!isNaN(n))prevN=n;}
+  // Map g-th group to g-th sleeve label
+  for(let g=0;g<groupStarts.length;g++){const s=groupStarts[g],e=g+1<groupStarts.length?groupStarts[g+1]-1:36;const lbl=slvLbls[g]||`sleeve${g}`;for(let c=s;c<=e;c++)sleeveLabels[c]=lbl;}
   const brandMap={'ENZO DRESS SHIRTS:':'Enzo','MANTONI 100% COTTON DRESS SHIRTS:':'Mantoni','LINEN SHIRTS':'Mantoni','GIORGIO FIORELLI DRESS SHIRTS:':'Giorgio Fiorelli','ADJUSTABLE CONVERTIBLE SHIRTS':'Giorgio Fiorelli'};
   let currentBrand='Enzo',currentHdr=neckHdr,currentSleeveLabels=sleeveLabels;
   const items=[];
@@ -608,13 +617,13 @@ function parseJeans(raw){
     const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
     const styleVal=String(row[3]||'').trim();if(isSkip(styleVal)||isSkip(lot))continue;
     if(styleVal&&styleVal.length>3)continue; // skip "will arrive" rows where col3 has notice text
-    const color=String(row[1]||'').trim();
-    const model=color||'Jean';
-    const aisle=normalizeAisle(row[aisleC]);
+    const model='Jeans';
+    const aisleRaw=normalizeAisle(row[aisleC]);
+    const aisle=aisleRaw!=null?`Jeans - ${aisleRaw}`:null;
     const sizes={};
     for(let c=4;c<=15;c++){const sz=hdr[c];const val=row[c];if(sz!=null&&val&&typeof val==='number'&&val>0)sizes[String(sz)]=safeInt(val);}
     if(!Object.keys(sizes).length)continue;
-    items.push({lot,flag:null,model,brand:'Enzo',category:'Jeans',aisle,shipdate:String(row[shipC]||''),sizeSystem:'jeans',sizes});
+    items.push({lot,flag:String(row[1]||'').trim()||null,model,brand:'Enzo',category:'Jeans',aisle,shipdate:String(row[shipC]||''),sizeSystem:'jeans',sizes});
   }
   return items;
 }
