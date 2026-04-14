@@ -384,7 +384,7 @@ function parseEnzoSuits(raw){
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;});
   // Enzo: AISLE label is in hdr (row7), actual data is one column to the right
   const ha=hdr.findIndex((v,i)=>i>30&&String(v||'').toUpperCase()==='AISLE');
-  if(ha>=0)aisleC=ha+1;
+  if(ha>=0)aisleC=ha;
   return buildStandardSuits(raw,8,hdr,shortS,longS,aisleC,shipC,'Enzo');
 }
 
@@ -565,7 +565,7 @@ function parseShirts(raw){
   for(let c=3;c<=37;c++){const v=sleeveSec[c];if(v!=null&&String(v).trim())slvLbls.push(String(v).trim().replace(/\s/g,'').replace(/\//g,'-'));}
   // Detect group boundaries: where neck values reset (decrease) in neckHdr
   const groupStarts=[3];let prevN=-1;
-  for(let c=4;c<=36;c++){const v=neckHdr[c];if(v==null)continue;const n=parseFloat(String(v));if(!isNaN(n)&&prevN>0&&n<prevN)groupStarts.push(c);if(!isNaN(n))prevN=n;}
+  for(let c=4;c<=36;c++){const v=neckHdr[c];if(v==null)continue;const n=parseFloat(String(v));if(!isNaN(n)&&n<=30&&prevN>0&&n<prevN)groupStarts.push(c);if(!isNaN(n)&&n<=30)prevN=n;}
   // Map g-th group to g-th sleeve label
   for(let g=0;g<groupStarts.length;g++){const s=groupStarts[g],e=g+1<groupStarts.length?groupStarts[g+1]-1:36;const lbl=slvLbls[g]||`sleeve${g}`;for(let c=s;c<=e;c++)sleeveLabels[c]=lbl;}
   const brandMap={'ENZO DRESS SHIRTS:':'Enzo','MANTONI 100% COTTON DRESS SHIRTS:':'Mantoni','LINEN SHIRTS':'Mantoni','GIORGIO FIORELLI DRESS SHIRTS:':'Giorgio Fiorelli','ADJUSTABLE CONVERTIBLE SHIRTS':'Giorgio Fiorelli'};
