@@ -421,7 +421,7 @@ function buildStandardSuits(raw,startRow,hdr,shortS,longS,aisleC,shipC,brand,pri
     const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
     const flag=priceInCol1?null:(String(row[1]||'').trim()||null);
     const model=String(row[2]||'').trim();if(isSkip(model))continue;
-    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    let cat=classifyModel(model);if(cat==='__SKIP__')continue;if(cat==='__UNCLASSIFIED__'&&/vest/i.test(model))cat='Vest';
     const reg=extractSizes(hdr,row,3,shortS-1);
     const short=extractSizes(hdr,row,shortS,longS-1);
     const long_=extractSizes(hdr,row,longS,aisleC-2);
