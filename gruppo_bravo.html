@@ -319,7 +319,7 @@ function getSizeSystem(m){
   if(/Rental BOYS\.Pants|boys.*pants/i.test(m))return'boys_pants';
   if(/BOYS.*PANT|^BOYS-Pants/i.test(m))return'boys_tpants';
   if(/rental.*vest|vest.*rental/i.test(m))return'vest_xs';
-  if(/\bshirt\b|linen.shirt|LayDown|FrenchCuff|Adj\.|Linen-Shirt|Clean$|Slim-Fit$/i.test(m))return'shirt';
+  if(/\bshirt\b|linen.shirt|LayDown|FrenchCuff|Linen-Shirt|Clean$|Slim-Fit$/i.test(m))return'shirt';
   if(/jean|jeans|shorts/i.test(m))return'jeans';
   return'standard';
 }
