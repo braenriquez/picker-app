@@ -3,7 +3,15 @@
 // ~5MB quota that localStorage imposes in some mobile browsers.
 
 import Dexie, { type Table } from 'dexie';
-import type { ImportedFile, Item, PickListEntry, RawCategory, UnclassifiedItem } from './types';
+import { classifyModel } from './parsers/classify';
+import type {
+  Category,
+  ImportedFile,
+  Item,
+  PickListEntry,
+  RawCategory,
+  UnclassifiedItem
+} from './types';
 
 /** Composite unique key used for dedupe on import. */
 const itemKey = (i: { brand: string; lot: string; model: string }) =>
@@ -77,6 +85,92 @@ export async function addUnclassified(items: UnclassifiedItem[]): Promise<number
   const fresh = keyed.filter((k) => !existing.has(k.key));
   if (fresh.length) await db.unclassified.bulkAdd(fresh);
   return fresh.length;
+}
+
+export async function getUnclassified(): Promise<UnclassifiedItem[]> {
+  const rows = await db.unclassified.toArray();
+  return rows.map(({ key: _k, ...rest }) => rest as UnclassifiedItem);
+}
+
+/** Confirm `model → category`: writes memory, promotes every unclassified
+ *  row for that model into inventory, and updates any inventory rows that
+ *  had a different category. Returns how many rows moved/updated. */
+export async function classifyAndPromoteModel(
+  model: string,
+  category: Category
+): Promise<{ promoted: number; updated: number }> {
+  let promoted = 0;
+  let updated = 0;
+  await db.transaction('rw', db.memory, db.unclassified, db.inventory, async () => {
+    await db.memory.put({ model, category });
+
+    const pending = await db.unclassified.where('model').equals(model).toArray();
+    if (pending.length) {
+      const fresh = pending.map(({ key: _k, ...rest }) => ({
+        ...(rest as Omit<UnclassifiedItem, 'category'>),
+        category,
+        key: `${rest.brand}||${rest.lot}||${rest.model}`
+      })) as unknown as (Item & { key: string })[];
+      // bulkPut so any existing key in inventory is overwritten rather than throwing.
+      await db.inventory.bulkPut(fresh);
+      await db.unclassified.where('model').equals(model).delete();
+      promoted = pending.length;
+    }
+
+    const inv = await db.inventory.where('model').equals(model).toArray();
+    const stale = inv.filter((i) => i.category !== category);
+    if (stale.length) {
+      await db.inventory.bulkPut(stale.map((i) => ({ ...i, category })));
+      updated = stale.length;
+    }
+  });
+  return { promoted, updated };
+}
+
+/** Remove a memory override and re-run classification for `model` against
+ *  DEFAULT_RULES. If the new answer is a real category, inventory rows keep
+ *  up; if it comes back __UNCLASSIFIED__, they move back to the review queue. */
+export async function forgetMemory(model: string): Promise<{ moved: number; newCategory: RawCategory }> {
+  let moved = 0;
+  let newCategory: RawCategory = '__UNCLASSIFIED__';
+  await db.transaction('rw', db.memory, db.inventory, db.unclassified, async () => {
+    await db.memory.delete(model);
+    // Re-classify against default rules + remaining memory (minus this one).
+    const remaining = await getMemoryInternal();
+    newCategory = classifyModel(model, remaining);
+    const affected = await db.inventory.where('model').equals(model).toArray();
+    if (!affected.length) return;
+    if (newCategory === '__UNCLASSIFIED__') {
+      const keyed = affected.map((i) => {
+        const { category: _c, key: _k, ...rest } = i;
+        return {
+          ...(rest as Omit<UnclassifiedItem, 'category'>),
+          category: '__UNCLASSIFIED__' as const,
+          key: `${i.brand}||${i.lot}||${i.model}`
+        } as UnclassifiedItem & { key: string };
+      });
+      await db.unclassified.bulkPut(keyed);
+      await db.inventory.where('model').equals(model).delete();
+      moved = affected.length;
+    } else if (newCategory !== '__SKIP__') {
+      const cat = newCategory as Category;
+      const changed = affected.filter((i) => i.category !== cat);
+      if (changed.length) {
+        await db.inventory.bulkPut(changed.map((i) => ({ ...i, category: cat })));
+        moved = changed.length;
+      }
+    }
+  });
+  return { moved, newCategory };
+}
+
+/** Internal memory read — used inside transactions where we don't want to
+ *  open a new outer transaction. */
+async function getMemoryInternal(): Promise<Record<string, RawCategory>> {
+  const rows = await db.memory.toArray();
+  const out: Record<string, RawCategory> = {};
+  for (const r of rows) out[r.model] = r.category;
+  return out;
 }
 
 export async function recordFile(entry: ImportedFile): Promise<void> {
