@@ -3,6 +3,7 @@
   import { pwaInfo } from 'virtual:pwa-info';
   import ReloadPrompt from '$lib/components/ReloadPrompt.svelte';
   import BottomNav from '$lib/components/BottomNav.svelte';
+  import Toast from '$lib/components/Toast.svelte';
   import { onMount } from 'svelte';
 
   let { children } = $props();
@@ -25,3 +26,4 @@
 </div>
 
 <ReloadPrompt />
+<Toast />

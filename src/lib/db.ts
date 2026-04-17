@@ -24,12 +24,17 @@ class GruppoBravoDB extends Dexie {
 
   constructor() {
     super('gruppo-bravo');
+    // v1 shipped without `order` indexed on picklist — v2 adds it so
+    // getPickList/addToPickList can use orderBy('order').
     this.version(1).stores({
       inventory: '&key, brand, category, lot, model, [brand+category]',
       unclassified: '&key, brand, model',
       memory: '&model',
       picklist: '&id',
       files: '++, name, importedAt'
+    });
+    this.version(2).stores({
+      picklist: '&id, order'
     });
   }
 }
@@ -90,6 +95,30 @@ export async function clearAll(): Promise<void> {
   ]);
   // Keep memory and picklist — user corrections and active pick shouldn't
   // vanish when they re-import to replace source data.
+}
+
+/** Upsert pick-list entries by id. If an entry with the same id exists, its
+ *  qty is incremented by the new qty (so adding "40R x 2" twice yields 4);
+ *  otherwise the entry is appended with the next `order` value. */
+export async function addToPickList(entries: PickListEntry[]): Promise<number> {
+  if (!entries.length) return db.picklist.count();
+  await db.transaction('rw', db.picklist, async () => {
+    const existingMax = (await db.picklist.orderBy('order').last())?.order ?? 0;
+    let nextOrder = existingMax + 1;
+    for (const e of entries) {
+      const prev = await db.picklist.get(e.id);
+      if (prev) {
+        await db.picklist.put({ ...prev, qty: prev.qty + e.qty, stock: e.stock });
+      } else {
+        await db.picklist.put({ ...e, order: nextOrder++ });
+      }
+    }
+  });
+  return db.picklist.count();
+}
+
+export async function getPickList(): Promise<PickListEntry[]> {
+  return db.picklist.orderBy('order').toArray();
 }
 
 export async function counts(): Promise<{ inventory: number; unclassified: number; files: number }> {

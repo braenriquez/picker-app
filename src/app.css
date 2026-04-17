@@ -52,13 +52,17 @@ html, body {
   overscroll-behavior-y: contain;
 }
 
-/* Form resets so Tailwind/theme wins over browser defaults */
-button, input, select, textarea {
-  font: inherit;
-  color: inherit;
-}
+/* Form resets so Tailwind/theme wins over browser defaults.
+   Placed in @layer base so utility classes (text-white, text-muted, …) applied
+   directly on the element still win. */
+@layer base {
+  button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
 
-select {
-  appearance: none;
-  -webkit-appearance: none;
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+  }
 }
