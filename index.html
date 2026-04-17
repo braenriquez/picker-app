@@ -37,12 +37,25 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
 .page.active{display:block}
 .slabel{font-size:.63rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:7px;display:block}
 .fgroup{margin-bottom:18px}
-/* Lot + Style on one line: lot gets ~1/3 of the width, style gets ~2/3. No width calculations —
-   the flex ratio handles it. If the lot text overflows, the native select truncates it. */
+/* Lot + Style on one line. Default ratio is 1:2 (lot ~1/3, style ~2/3) so the short
+   "Select" placeholder fits cleanly. Once a lot is picked, fitLotColumn() measures the
+   selected lot text and expands .ls-lot to exactly fit it (capped so Style keeps a usable
+   minimum). flex-basis is transitioned so the grow feels intentional, not jumpy. */
 .fg-lotstyle{display:flex;gap:10px;margin-bottom:18px;align-items:flex-end}
 .fg-lotstyle .fgroup{margin-bottom:0;min-width:0}
-.fg-lotstyle .ls-lot{flex:1 1 0;min-width:0}
+.fg-lotstyle .ls-lot{flex:1 1 0;min-width:0;transition:flex-basis .18s ease}
 .fg-lotstyle .ls-style{flex:2 1 0;min-width:0}
+/* Overlay trick: the native <select>'s collapsed value is hidden (transparent text)
+   and replaced by a positioned <span> that shows the parens-stripped lot. The native
+   <option> list (desktop dropdown or mobile picker) keeps each option's FULL text,
+   so users still see the complete value — including parenthetical color/fabric — when
+   they open the picker. Re-enable color on <option> so the dropdown list stays readable. */
+.sel-wrap{position:relative;width:100%}
+.sel-wrap-lot > select{color:transparent;text-shadow:0 0 0 transparent}
+.sel-wrap-lot > select:focus{color:transparent}
+.sel-wrap-lot > select option{color:var(--text)}
+.sel-display{position:absolute;inset:0;padding:11px 36px 11px 13px;pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'DM Sans',sans-serif;font-size:1rem;color:var(--text);display:flex;align-items:center}
+.sel-display.placeholder{color:var(--muted)}
 select{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:1rem;padding:11px 36px 11px 13px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;transition:border-color .15s}
 select:focus{outline:none;border-color:var(--accent)}
 select:disabled{opacity:.3;cursor:not-allowed}
@@ -221,7 +234,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
     <div class="fgroup"><span class="slabel">Brand</span><div class="chip-row" id="cr-brand"></div></div>
     <div class="fgroup"><span class="slabel">Type</span><div class="chip-row" id="cr-type"></div></div>
     <div class="fg-lotstyle">
-      <div class="fgroup ls-lot"><span class="slabel">Lot Number</span><select id="sel-lot"><option value="">— Select a lot —</option></select></div>
+      <div class="fgroup ls-lot"><span class="slabel">Lot Number</span><div class="sel-wrap sel-wrap-lot"><select id="sel-lot"><option value="">Select</option></select><span class="sel-display placeholder" id="sel-lot-display">Select</span></div></div>
       <div class="fgroup ls-style"><span class="slabel">Style / Model</span><select id="sel-style" disabled><option value="">— Select a style —</option></select></div>
     </div>
     <div class="icard" id="icard">
@@ -436,6 +449,47 @@ function aisleSortKey(a){
   if(/^up/i.test(s))return[2,9000,s];
   const n=parseFloat(s);if(!isNaN(n))return[1,n,''];
   return[3,9999,s];
+}
+
+// Strip parenthetical content from a lot number for display only.
+// "12345 (Black)" → "12345". The raw lot value (with parens) is still used as the
+// <option value> and as F.lot, so inventory matching keeps working unchanged.
+function truncateLot(v){if(v==null)return'';return String(v).replace(/\s*\([^)]*\)\s*/g,' ').trim();}
+
+// Fast text-width measurement (reuses a single canvas context between calls).
+function measureTextPx(text,fontCss){
+  const c=measureTextPx._c||(measureTextPx._c=document.createElement('canvas'));
+  const ctx=c.getContext('2d');
+  ctx.font=fontCss;
+  return ctx.measureText(text).width;
+}
+
+// Resize the Lot column to exactly fit the selected lot text, OR reset to the
+// default 1:2 flex ratio when nothing is selected. Called after the lot dropdown
+// is (re)populated in renderFindPage(). Capped so the Style column always keeps
+// a usable minimum width.
+function fitLotColumn(){
+  const sl=document.getElementById('sel-lot');
+  const wrap=document.querySelector('.fg-lotstyle .ls-lot');
+  const container=document.querySelector('.fg-lotstyle');
+  if(!sl||!wrap||!container)return;
+  // Nothing selected → hand back to the default 1:2 flex ratio.
+  if(!F.lot){wrap.style.flex='';return;}
+  // Compose the same font shorthand the <select> uses so canvas measurement is accurate.
+  const cs=getComputedStyle(sl);
+  const fontCss=`${cs.fontStyle||'normal'} ${cs.fontWeight||'400'} ${cs.fontSize} ${cs.fontFamily}`;
+  // Measure the truncated form because that's what's actually rendered in the collapsed select.
+  const displayText=truncateLot(F.lot)||F.lot;
+  const textW=measureTextPx(displayText,fontCss);
+  // Horizontal chrome on the select: padding 13px left + 36px right (chevron) + border 2px.
+  const CHROME=51;
+  const needed=Math.ceil(textW+CHROME);
+  // Cap so Style keeps at least ~120px; also leave room for the 10px column gap.
+  const MIN_STYLE=120,GAP=10;
+  const maxLot=Math.max(80,container.clientWidth-MIN_STYLE-GAP);
+  const w=Math.min(needed,maxLot);
+  // Pin the lot column to the computed width and stop it from flex-growing/shrinking.
+  wrap.style.flex=`0 0 ${w}px`;
 }
 
 // Lay out chips in a .chip-row so that:
@@ -969,10 +1023,20 @@ function renderFindPage(){
   const sl=document.getElementById('sel-lot');
   const lots=[...new Set(inventory.filter(i=>(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type)).map(i=>i.lot))];
   sl.disabled=!F.brand||!F.type;
-  sl.innerHTML='<option value="">— Select a lot —</option>';
+  sl.innerHTML='<option value="">Select</option>';
+  // Options keep the FULL lot text so the expanded picker (desktop dropdown or mobile
+  // native wheel) shows the complete value, including any parenthetical color/fabric.
   lots.forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;sl.appendChild(o);});
   if(!lots.includes(F.lot))F.lot='';
   sl.value=F.lot;
+  // Sync the overlay span that replaces the collapsed select's value with the truncated form.
+  const sld=document.getElementById('sel-lot-display');
+  if(sld){
+    if(F.lot){sld.textContent=truncateLot(F.lot)||F.lot;sld.classList.remove('placeholder');}
+    else{sld.textContent='Select';sld.classList.add('placeholder');}
+  }
+  // Resize the lot column to fit the (truncated) selected text, or reset to 1/3 if no selection.
+  fitLotColumn();
 
   // Style dropdown
   const ss=document.getElementById('sel-style');
@@ -1316,6 +1380,7 @@ function init(){
     balanceChipRow(document.getElementById('cr-brand'));
     balanceChipRow(document.getElementById('cr-type'));
     balanceChipRow(document.getElementById('cr-sizetype'));
+    fitLotColumn();
   },120);});
   renderFindPage();renderReviewNav();updateNavPill();
 }
