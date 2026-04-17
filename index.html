@@ -55,6 +55,10 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .szchip:active{transform:scale(.9)}
 .szchip.counted{background:var(--accentbg);border-color:var(--accent2);color:var(--accent)}
 .csz{font-size:1rem;font-weight:700;line-height:1}
+.szchip.two-line{min-width:60px;padding:9px 10px 8px}
+.szchip.two-line .csz{display:flex;flex-direction:column;align-items:center;gap:3px}
+.szchip.two-line .csz-top{font-size:1rem;font-weight:700;line-height:1;letter-spacing:.5px}
+.szchip.two-line .csz-sub{font-size:.58rem;font-weight:500;line-height:1;opacity:.7;letter-spacing:.3px}
 .cst{font-size:.58rem;opacity:.55;line-height:1}
 .szchip.counted .cst{color:#9a8050;opacity:.7}
 .cbadge{position:absolute;top:-8px;right:-8px;background:#cc2222;color:#fff;font-size:.6rem;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg);z-index:3;pointer-events:none}
@@ -192,7 +196,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
     <div class="fgroup"><span class="slabel">Style / Model</span><select id="sel-style" disabled><option value="">— Select a style —</option></select></div>
     <div class="icard" id="icard">
       <div class="ic-item"><div class="ic-lbl">Aisle</div><div class="ic-val" id="ic-aisle">—</div></div>
-      <div class="ic-item"><div class="ic-lbl">Brand</div><div class="ic-val" id="ic-brand">—</div></div>
+      <div class="ic-item"><div class="ic-lbl">Color / Style</div><div class="ic-val" id="ic-brand">—</div></div>
       <div class="ic-item"><div class="ic-lbl" id="ic-ship-lbl">Shipment Date</div><div class="ic-val" id="ic-ship">—</div></div>
     </div>
     <span class="slabel">Size Type</span>
@@ -318,7 +322,7 @@ function getSizeSystem(m){
   if(/Rental\.BOYS-Vest|BOYS_2BV\.Jacket/i.test(m))return'boys_bxs';
   if(/Rental BOYS\.Pants|boys.*pants/i.test(m))return'boys_pants';
   if(/BOYS.*PANT|^BOYS-Pants/i.test(m))return'boys_tpants';
-  if(/rental.*vest|vest.*rental/i.test(m))return'vest_xs';
+  if(/rental.*vest|vest.*rental|Roland.?Vest/i.test(m))return'vest_xs';
   if(/\bshirt\b|linen.shirt|LayDown|FrenchCuff|Linen-Shirt|Clean$|Slim-Fit$/i.test(m))return'shirt';
   if(/jean|jeans|shorts/i.test(m))return'jeans';
   return'standard';
@@ -326,6 +330,44 @@ function getSizeSystem(m){
 
 const safeInt=v=>{const n=parseInt(v);return isNaN(n)||n<=0?0:n};
 const isSkip=m=>!m||/will arrive|CANCELLED|cutting#|arrive on|minimum order/i.test(String(m));
+
+// Ordered rank table for letter-based size systems (vests, rentals, boys, adjustable shirts).
+// Returns a numeric rank for a size key like "S", "2XL", "BXS", "XL3", "2XL5", so chips
+// render in the natural order (XS→…→7XLL) rather than alphabetically.
+const _LETTER_BASE=['XXS','XS','XSL','S','SL','M','ML','L','LL','XL','XLL','XXL','XXLL','XXXL','XXXLL','XXXXL','XXXXLL','XXXXXL','XXXXXLL','XXXXXXL','XXXXXXLL','XXXXXXXL','XXXXXXXLL'];
+const _BOYS_BASE=['BXS','BS','BM','BL','BXL','BXXL'];
+function sizeLetterRank(s){
+  if(s==null)return null;
+  let k=String(s).trim().toUpperCase();
+  // Expand "2XL" → "XXL", "3XL" → "XXXL", etc. so a single lookup table suffices.
+  k=k.replace(/^(\d+)X/,(_,n)=>'X'.repeat(parseInt(n,10)||1)+'X');
+  // Try boys letter sizes first
+  let i=_BOYS_BASE.indexOf(k);
+  if(i>=0)return 1000+i;
+  i=_LETTER_BASE.indexOf(k);
+  if(i>=0)return 2000+i;
+  return null;
+}
+// Comparator used by size chip rendering. Prefers numeric (14.5, 38), then letter rank
+// (S<M<L<XL<2XL<3XL…), then falls back to alphabetical. Handles adjustable-shirt suffixes
+// like "S3", "2XL5", "XL7" by splitting the trailing digit-group as a secondary key.
+function sizeKeyCmp(a,b){
+  const pa=parseFloat(a),pb=parseFloat(b);
+  const aIsNum=!isNaN(pa)&&String(pa)===String(a).trim();
+  const bIsNum=!isNaN(pb)&&String(pb)===String(b).trim();
+  if(aIsNum&&bIsNum)return pa-pb;
+  // Split "S3" → base="S", "2XL5" → base="2XL", "BXS" → base="BXS" (trailing digits = shirt sleeve-group suffix)
+  const mA=String(a).trim().match(/^(.*?[A-Za-z])(\d*)$/);
+  const mB=String(b).trim().match(/^(.*?[A-Za-z])(\d*)$/);
+  const rA=mA?sizeLetterRank(mA[1]):null;
+  const rB=mB?sizeLetterRank(mB[1]):null;
+  if(rA!=null&&rB!=null){
+    const sA=mA[2]?parseInt(mA[2],10):0,sB=mB[2]?parseInt(mB[2],10):0;
+    if(sA!==sB)return sA-sB;  // group by sleeve-suffix first (3 < 5 < 7)
+    return rA-rB;
+  }
+  return String(a).localeCompare(String(b));
+}
 
 function extractSizes(hdr,row,s,e){
   const out={};
@@ -336,7 +378,7 @@ function extractSizes(hdr,row,s,e){
   }
   return out;
 }
-function findTTLCol(hdr){for(let i=0;i<hdr.length;i++){if(String(hdr[i]||'').trim().toUpperCase()==='TTL')return i;}return -1;}
+function findTTLCol(hdr){for(let i=0;i<hdr.length;i++){const s=String(hdr[i]||'').trim().toUpperCase();if(s==='TTL'||s==='TOTAL')return i;}return -1;}
 
 function normalizeAisle(v){
   if(v==null)return null;
@@ -390,13 +432,13 @@ function parseBertoliniSuits(raw){
 }
 
 function parseEnzoSuits(raw){
-  const secR=raw[4]||[],hdr=raw[7]||[];
+  const secR=raw[4]||[],vestSubHdr=raw[5]||[],vestChestHdr=raw[6]||[],hdr=raw[7]||[];
   let shortS=17,longS=26,aisleC=42,shipC=43;
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;});
   // Enzo: AISLE label is in hdr (row7), actual data is one column to the right
   const ha=hdr.findIndex((v,i)=>i>30&&String(v||'').toUpperCase()==='AISLE');
   if(ha>=0)aisleC=ha;
-  return buildStandardSuits(raw,8,hdr,shortS,longS,aisleC,shipC,'Enzo');
+  return buildStandardSuits(raw,8,hdr,shortS,longS,aisleC,shipC,'Enzo',false,vestSubHdr,vestChestHdr);
 }
 
 function parseVincenziSuits(raw){
@@ -413,7 +455,7 @@ function parseCarloSuits(raw){
   return buildStandardSuits(raw,5,hdr,shortS,longS,aisleC,shipC,'Carlo Lusso');
 }
 
-function buildStandardSuits(raw,startRow,hdr,shortS,longS,aisleC,shipC,brand,priceInCol1=false){
+function buildStandardSuits(raw,startRow,hdr,shortS,longS,aisleC,shipC,brand,priceInCol1=false,vestSubHdr=null,vestChestHdr=null){
   const ttlC=findTTLCol(hdr);
   const items=[];
   for(let i=startRow;i<raw.length;i++){
@@ -422,14 +464,33 @@ function buildStandardSuits(raw,startRow,hdr,shortS,longS,aisleC,shipC,brand,pri
     const flag=priceInCol1?null:(String(row[1]||'').trim()||null);
     const model=String(row[2]||'').trim();if(isSkip(model))continue;
     let cat=classifyModel(model);if(cat==='__SKIP__')continue;if(cat==='__UNCLASSIFIED__'&&/vest/i.test(model))cat='Vest';
+    const sys=getSizeSystem(model);
+    const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
+    const base={lot,flag:flag==='None'?null:flag,model,brand,category:cat,
+      aisle:normalizeAisle(row[aisleC]),shipdate:String(row[shipC]||''),ttl,sizeSystem:sys};
+    // Letter-sized vests (e.g. Roland-Vest) — sizes come from vestSubHdr (row 5) columns,
+    // with chest-range sub-labels from vestChestHdr (row 6) for 2-line chip display.
+    if(sys==='vest_xs'&&vestSubHdr){
+      const sz={},meta={};
+      for(let c=0;c<vestSubHdr.length;c++){
+        const lbl=vestSubHdr[c];const val=row[c];
+        if(lbl!=null&&String(lbl).trim()&&val&&typeof val==='number'&&val>0){
+          const k=String(lbl).trim();
+          sz[k]=safeInt(val);
+          if(vestChestHdr&&vestChestHdr[c]!=null&&String(vestChestHdr[c]).trim())meta[k]=String(vestChestHdr[c]).trim();
+        }
+      }
+      if(!Object.keys(sz).length)continue;
+      const item={...base,sizes:sz};
+      if(Object.keys(meta).length)item.sizeMeta=meta;
+      items.push(item);
+      continue;
+    }
     const reg=extractSizes(hdr,row,3,shortS-1);
     const short=extractSizes(hdr,row,shortS,longS-1);
     const long_=extractSizes(hdr,row,longS,aisleC-2);
     if(!Object.keys(reg).length&&!Object.keys(short).length&&!Object.keys(long_).length)continue;
-    const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
-    items.push({lot,flag:flag==='None'?null:flag,model,brand,category:cat,
-      aisle:normalizeAisle(row[aisleC]),shipdate:String(row[shipC]||''),ttl,
-      sizeSystem:getSizeSystem(model),regular:reg,short,long:long_});
+    items.push({...base,regular:reg,short,long:long_});
   }
   return items;
 }
@@ -530,6 +591,7 @@ function parseMantoniSuits(raw){
 function parseMantoniPants(raw){
   const boysHdr=raw[3]||[],hdr=raw[4]||[];
   const aisleC=20,shipC=22;
+  const ttlC=findTTLCol(hdr);
   const items=[];
   for(let i=5;i<raw.length;i++){
     const row=raw[i];if(!row)continue;
@@ -540,24 +602,26 @@ function parseMantoniPants(raw){
     const cat=classifyModel(model);if(cat==='__SKIP__')continue;
     const brand=lot.toUpperCase().startsWith('E')?'Enzo':'Mantoni';
     const aisle=normalizeAisle(row[aisleC]);
+    const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
     if(/^BOYS-Pants/i.test(model)){
       const sz={};
       for(let c=3;c<=8;c++){const lbl=boysHdr[c];const val=row[c];if(lbl&&val&&typeof val==='number'&&val>0)sz[String(lbl)]=safeInt(val);}
       if(!Object.keys(sz).length)continue;
-      items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),sizeSystem:'boys_tpants',sizes:sz});
+      items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:'boys_tpants',sizes:sz});
       continue;
     }
     const reg=extractSizes(hdr,row,3,17);
     if(!Object.keys(reg).length)continue;
-    items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),sizeSystem:'standard',regular:reg,short:{},long:{}});
+    items.push({lot,flag:flag==='None'?null:flag,model,brand,category:'Pants',aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:'standard',regular:reg,short:{},long:{}});
   }
   return items;
 }
 
 function parseJacketsAllBrands(raw){
-  const secR=raw[4]||[],hdr=raw[7]||[];
+  const secR=raw[4]||[],letterHdr=raw[5]||[],chestHdr=raw[6]||[],hdr=raw[7]||[];
   let shortS=17,longS=27,aisleC=40,shipC=41;
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  const ttlC=findTTLCol(hdr);
   const brandMap={'MANTONI JACKETS:':'Mantoni','BERTOLINI JACKETS:':'Bertolini','ENZO JACKETS:':'Enzo'};
   let currentBrand='Mantoni';
   const items=[];
@@ -567,15 +631,39 @@ function parseJacketsAllBrands(raw){
     if(brandMap[lot]){currentBrand=brandMap[lot];continue;}
     if(lot.endsWith(':'))continue;
     const flag=typeof row[1]==='number'?null:(String(row[1]||'').trim()||null);
-    const model=String(row[2]||'').trim();if(isSkip(model))continue;
-    let cat=classifyModel(model);if(cat==='__SKIP__')continue;if(cat==='__UNCLASSIFIED__')cat=/vest/i.test(model)?'Vest':'Jacket';
+    let model=String(row[2]||'').trim();if(isSkip(model))continue;
+    // Special rows: lot column contains a color (no digits), style column holds the group name.
+    // Swap them so the model becomes the lot (findable in dropdown) and the color is the style.
+    let lotFinal=lot;
+    const swapped=!/\d/.test(lot)&&!!model;
+    if(swapped){lotFinal=model;model=lot;}
+    // Classify using the garment descriptor (lotFinal when swapped, else model)
+    const classifyTarget=swapped?lotFinal:model;
+    let cat=classifyModel(classifyTarget);if(cat==='__SKIP__')continue;if(cat==='__UNCLASSIFIED__')cat=/vest/i.test(classifyTarget)?'Vest':'Jacket';
     const reg=extractSizes(hdr,row,3,shortS-1);
     const short=extractSizes(hdr,row,shortS,longS-1);
     const long_=extractSizes(hdr,row,longS,aisleC-2);
     if(!Object.keys(reg).length&&!Object.keys(short).length&&!Object.keys(long_).length)continue;
-    items.push({lot,flag,model,brand:currentBrand,category:cat,
-      aisle:normalizeAisle(row[aisleC]),shipdate:String(row[shipC]||''),
-      sizeSystem:'standard',regular:reg,short,long:long_});
+    const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
+    if(swapped){
+      // Special jacket rows use letter sizing from row5 as column headers (no chest sub-label for jackets)
+      const sizes={};
+      for(let c=0;c<letterHdr.length;c++){
+        const lbl=letterHdr[c];const val=row[c];
+        if(lbl!=null&&String(lbl).trim()&&val&&typeof val==='number'&&val>0){
+          const k=String(lbl).trim();
+          sizes[k]=(sizes[k]||0)+safeInt(val);
+        }
+      }
+      if(!Object.keys(sizes).length)continue;
+      items.push({lot:lotFinal,flag,model,brand:currentBrand,category:cat,
+        aisle:normalizeAisle(row[aisleC]),shipdate:String(row[shipC]||''),ttl,
+        sizeSystem:'vest_xs',sizes});
+    }else{
+      items.push({lot:lotFinal,flag,model,brand:currentBrand,category:cat,
+        aisle:normalizeAisle(row[aisleC]),shipdate:String(row[shipC]||''),ttl,
+        sizeSystem:'standard',regular:reg,short,long:long_});
+    }
   }
   return items;
 }
@@ -583,6 +671,7 @@ function parseJacketsAllBrands(raw){
 function parseShirts(raw){
   const neckHdr=raw[7]||[];
   const aisleC=38,shipC=39;
+  const ttlC=findTTLCol(neckHdr);
   const sleeveSec=raw[4]||[];
   const sleeveLabels={};
   // Collect sleeve labels in order from row4, normalizing "32 / 33" → "32-33"
@@ -594,41 +683,69 @@ function parseShirts(raw){
   // Map g-th group to g-th sleeve label
   for(let g=0;g<groupStarts.length;g++){const s=groupStarts[g],e=g+1<groupStarts.length?groupStarts[g+1]-1:36;const lbl=slvLbls[g]||`sleeve${g}`;for(let c=s;c<=e;c++)sleeveLabels[c]=lbl;}
   const brandMap={'ENZO DRESS SHIRTS:':'Enzo','MANTONI 100% COTTON DRESS SHIRTS:':'Mantoni','LINEN SHIRTS':'Mantoni','GIORGIO FIORELLI DRESS SHIRTS:':'Giorgio Fiorelli','ADJUSTABLE CONVERTIBLE SHIRTS':'Giorgio Fiorelli'};
-  let currentBrand='Enzo',currentHdr=neckHdr,currentSleeveLabels=sleeveLabels;
+  // Spec sections put letter sizes INSIDE the section header row itself, with chest
+  // ranges in the next row. Untitled letter sub-headers (e.g. rows 101-102 before
+  // G26031-1S) are detected heuristically: col 0 null + letter-size tokens at col 14+.
+  const LETTER_TOKEN=/^(?:S|M|L|XL|XXL|2XL|3XL|4XL|5XL|S3|M3|L3|XL3|M5|L5|XL5|2XL5|3XL5|4XL5|L7|XL7|2XL7|3XL7|4XL7)$/i;
+  function isLetterSubHdr(row){
+    if(!row||String(row[0]||'').trim())return false;
+    for(let c=3;c<=20;c++){const v=row[c];if(v!=null&&LETTER_TOKEN.test(String(v).trim()))return true;}
+    return false;
+  }
+  let currentBrand='Enzo',currentHdr=neckHdr,currentMeta=null,isSpec=false;
   const items=[];
   for(let i=8;i<raw.length;i++){
     const row=raw[i];if(!row)continue;
-    const lot=String(row[0]||'').trim();if(!lot)continue;
-    if(brandMap[lot]){
+    const lot=String(row[0]||'').trim();
+    // Titled section header (brandMap match)
+    if(lot&&brandMap[lot]){
       currentBrand=brandMap[lot];
-      const isSpec=lot==='LINEN SHIRTS'||lot==='ADJUSTABLE CONVERTIBLE SHIRTS';
-      if(isSpec){
-        currentHdr=raw[i+2]||raw[i+1]||neckHdr;
-        currentSleeveLabels={};
-        const nsec=raw[i+1]||[];
-        let cs='';
-        for(let c=0;c<Math.max(currentHdr.length,nsec.length);c++){if(nsec[c]!=null&&String(nsec[c]).trim())cs=String(nsec[c]).replace(/\s/g,'');if(currentHdr[c]!=null)currentSleeveLabels[c]=cs;}
-        i+=2;
-      }else{currentHdr=neckHdr;currentSleeveLabels=sleeveLabels;}
+      const spec=lot==='LINEN SHIRTS'||lot==='ADJUSTABLE CONVERTIBLE SHIRTS';
+      if(spec){
+        // Letter sizes are embedded in THIS row; chest ranges are in the next row.
+        currentHdr=row;
+        currentMeta=raw[i+1]||[];
+        isSpec=true;
+        i+=1;   // skip chest-range row; data starts at i+2
+      }else{
+        currentHdr=neckHdr;currentMeta=null;isSpec=false;
+      }
       continue;
     }
+    // Untitled letter sub-header (col 0 null + letter tokens at col 14+)
+    if(!lot&&isLetterSubHdr(row)){
+      currentHdr=row;
+      currentMeta=raw[i+1]||[];
+      isSpec=true;
+      i+=1;
+      continue;
+    }
+    if(!lot)continue;
     if(lot.endsWith(':'))continue;
     const flag=String(row[1]||'').trim()||null;
     const model=String(row[2]||'').trim();if(isSkip(model))continue;
     const aisle=normalizeAisle(row[aisleC]);
-    const sizes={};
+    const sizes={};const sizeMeta={};
     for(let c=3;c<=35;c++){
-      const neck=currentHdr[c];if(neck==null)continue;
+      const hdrVal=currentHdr[c];if(hdrVal==null||String(hdrVal).trim()==='')continue;
       const val=row[c];
       if(val&&typeof val==='number'&&val>0){
-        const sleeve=currentSleeveLabels[c]||sleeveLabels[c]||'';
-        const lbl=sleeve?`${sleeve}/${neck}`:`${neck}`;
+        const sleeve=sleeveLabels[c]||'Other';
+        const tag=String(hdrVal).trim();
+        const lbl=`${sleeve}/${tag}`;
         sizes[lbl]=(sizes[lbl]||0)+safeInt(val);
+        if(isSpec&&currentMeta){
+          const chest=currentMeta[c];
+          if(chest!=null&&String(chest).trim()!=='')sizeMeta[lbl]=String(chest).trim();
+        }
       }
     }
     if(!Object.keys(sizes).length)continue;
-    items.push({lot,flag:flag==='None'?null:flag,model,brand:currentBrand,category:'Shirt',
-      aisle,shipdate:String(row[shipC]||''),sizeSystem:'shirt',sizes});
+    const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
+    const item={lot,flag:flag==='None'?null:flag,model,brand:currentBrand,category:'Shirt',
+      aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:'shirt',sizes};
+    if(Object.keys(sizeMeta).length)item.sizeMeta=sizeMeta;
+    items.push(item);
   }
   return items;
 }
@@ -636,6 +753,7 @@ function parseShirts(raw){
 function parseJeans(raw){
   const hdr=raw[3]||[];
   const aisleC=17,shipC=19;
+  const ttlC=findTTLCol(hdr);
   const items=[];
   for(let i=4;i<raw.length;i++){
     const row=raw[i];if(!row)continue;
@@ -648,7 +766,8 @@ function parseJeans(raw){
     const sizes={};
     for(let c=4;c<=15;c++){const sz=hdr[c];const val=row[c];if(sz!=null&&val&&typeof val==='number'&&val>0)sizes[String(sz)]=safeInt(val);}
     if(!Object.keys(sizes).length)continue;
-    items.push({lot,flag:String(row[1]||'').trim()||null,model,brand:'Enzo',category:'Jeans',aisle,shipdate:String(row[shipC]||''),sizeSystem:'jeans',sizes});
+    const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
+    items.push({lot,flag:String(row[1]||'').trim()||null,model,brand:'Enzo',category:'Jeans',aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:'jeans',sizes});
   }
   return items;
 }
@@ -725,7 +844,7 @@ function renderFindPage(){
   const tcr=document.getElementById('cr-type');tcr.innerHTML='';
   types.forEach(t=>{
     const b=document.createElement('button');b.className='cb'+(F.type===t?' active':'');b.textContent=t;
-    b.onclick=()=>{F.type=t===F.type?'':t;F.lot='';F.style='';F.sizeType='';F.chipCountsByType={};renderFindPage();};
+    b.onclick=()=>{if(F.type===t)return;F.type=t;F.lot='';F.style='';F.sizeType='';F.chipCountsByType={};renderFindPage();};
     tcr.appendChild(b);
   });
 
@@ -754,7 +873,10 @@ function renderFindPage(){
   if(entry){
     ic.classList.add('on');
     document.getElementById('ic-aisle').textContent=entry.aisle!=null?String(entry.aisle):'—';
-    document.getElementById('ic-brand').textContent=entry.brand||'—';
+    // Show flag (color/fabric descriptor) when it's a meaningful string; skip noise like "C" and pure numbers
+    const fl=entry.flag!=null?String(entry.flag).trim():'';
+    const meaningful=fl&&fl.toUpperCase()!=='C'&&fl.toUpperCase()!=='NONE'&&isNaN(parseFloat(fl));
+    document.getElementById('ic-brand').textContent=meaningful?fl:'—';
     const hasTTL=entry.ttl!=null&&entry.ttl>0;
     document.getElementById('ic-ship-lbl').textContent=hasTTL?'In Stock':'Shipment Date';
     document.getElementById('ic-ship').textContent=hasTTL?entry.ttl:(entry.shipdate||'—');
@@ -810,13 +932,17 @@ function renderSizeChips(){
   else if(sys==='shirt'){sizeMap={};const pref=F.sizeType+'/';Object.entries(entry.sizes||{}).forEach(([lbl,qty])=>{if(lbl.startsWith(pref))sizeMap[lbl.slice(pref.length)]=(sizeMap[lbl.slice(pref.length)]||0)+qty;else if(lbl.indexOf('/')<0&&F.sizeType==='Other')sizeMap[lbl]=(sizeMap[lbl]||0)+qty;});}
   else{sizeMap=entry.sizes||{};}
   const keys=Object.keys(sizeMap).filter(k=>sizeMap[k]>0);
-  keys.sort((a,b)=>{const na=parseFloat(a),nb=parseFloat(b);return isNaN(na)||isNaN(nb)?a.localeCompare(b):na-nb;});
+  keys.sort(sizeKeyCmp);
   if(!keys.length){grid.innerHTML='<span class="sempty">No sizes available.</span>';return;}
+  const meta=entry.sizeMeta||null;
   keys.forEach(sz=>{
     const stock=sizeMap[sz],count=ctForType(F.sizeType)[sz]||0;
     const chip=document.createElement('div');
-    chip.className='szchip'+(count>0?' counted':'');chip.dataset.size=sz;
-    chip.innerHTML=`<span class="cbadge${count>0?' on':''}">${count||''}</span><button class="cclr${count>0?' on':''}" data-sz="${sz}" tabindex="-1">×</button><span class="csz">${sz}</span><span class="cst">qty ${stock}</span>`;
+    const metaKey=sys==='shirt'?`${F.sizeType}/${sz}`:sz;
+    const sub=meta&&meta[metaKey]?meta[metaKey]:null;
+    chip.className='szchip'+(count>0?' counted':'')+(sub?' two-line':'');chip.dataset.size=sz;
+    const szHtml=sub?`<span class="csz"><span class="csz-top">${sz}</span><span class="csz-sub">${sub}</span></span>`:`<span class="csz">${sz}</span>`;
+    chip.innerHTML=`<span class="cbadge${count>0?' on':''}">${count||''}</span><button class="cclr${count>0?' on':''}" data-sz="${sz}" tabindex="-1">×</button>${szHtml}<span class="cst">qty ${stock}</span>`;
     chip.addEventListener('click',e=>{if(e.target.classList.contains('cclr'))return;tapChip(sz,chip,stock);});
     chip.querySelector('.cclr').addEventListener('click',e=>{e.stopPropagation();clearChip(sz,chip);});
     grid.appendChild(chip);
