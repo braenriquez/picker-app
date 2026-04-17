@@ -37,10 +37,27 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
 .page.active{display:block}
 .slabel{font-size:.63rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:7px;display:block}
 .fgroup{margin-bottom:18px}
+/* Lot + Style on one line: lot gets ~1/3 of the width, style gets ~2/3. No width calculations —
+   the flex ratio handles it. If the lot text overflows, the native select truncates it. */
+.fg-lotstyle{display:flex;gap:10px;margin-bottom:18px;align-items:flex-end}
+.fg-lotstyle .fgroup{margin-bottom:0;min-width:0}
+.fg-lotstyle .ls-lot{flex:1 1 0;min-width:0}
+.fg-lotstyle .ls-style{flex:2 1 0;min-width:0}
 select{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:1rem;padding:11px 36px 11px 13px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;transition:border-color .15s}
 select:focus{outline:none;border-color:var(--accent)}
 select:disabled{opacity:.3;cursor:not-allowed}
-.chip-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+/* Chip rows (brand / type / size-type) are sized by balanceChipRow():
+   - Chips are split into balanced lines with AT MOST 3 per line.
+   - Every chip on the same line gets the SAME width.
+   - Each line fills the row's horizontal space exactly.
+   space-evenly is only a visual fallback between the DOM update and the JS pass. */
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;row-gap:9px;margin-bottom:16px;justify-content:space-evenly}
+.chip-break{flex-basis:100%;width:100%;height:0;margin:0;padding:0;order:0}
+/* Button width is driven by JS inline style. min-width:0 defeats the flex default
+   min-width:auto (which would otherwise grow the chip to fit its text and push siblings
+   onto a new line on narrow screens). balanceChipRow() also scales font-size down per
+   line when text won't fit; overflow:hidden + ellipsis is the last-resort safety net. */
+.chip-row .cb{text-align:center;flex-shrink:0;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cb{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:9px 14px;cursor:pointer;transition:all .15s;white-space:nowrap}
 .cb:hover{border-color:var(--accent);color:var(--accent)}
 .cb.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
@@ -94,7 +111,16 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .lsh{display:flex;align-items:center;gap:7px;padding:6px 13px 6px 24px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(46,46,46,.5)}
 .lshlot{font-size:.8rem;font-weight:700;color:var(--text)}
 .lshmod{font-size:.72rem;color:var(--muted)}
-.prow{display:grid;grid-template-columns:44px 70px 1fr 60px 62px;align-items:center;gap:9px;padding:9px 13px 9px 36px;border-bottom:1px solid rgba(46,46,46,.3);transition:background .1s}
+/* Pick list column order: Ordered | Type | Size | (spacer) | In Stock | Picked button.
+   - Type and Size stay as two distinct cells but are visually close together (negative
+     left-margin on Size).
+   - Type sits a bit further from Ordered (positive left-margin on Type).
+   - Column 4 is a flexible spacer (1fr) that pushes In Stock + Picked to the right edge,
+     so In Stock lands right next to the Picked button.
+   - ocount / ocount.hc styling is unchanged from the original spec. */
+.prow{display:grid;grid-template-columns:56px 32px 48px 1fr 58px 62px;align-items:center;gap:10px;padding:9px 13px 9px 36px;border-bottom:1px solid rgba(46,46,46,.3);transition:background .1s}
+.prow .ptyp{margin-left:6px}
+.prow .psz{margin-left:-7px}
 .prow:last-child{border-bottom:none}
 .prow:hover{background:rgba(200,169,110,.03)}
 .ptyp{font-size:.88rem;font-weight:700;color:var(--text)}
@@ -104,7 +130,9 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .qbadge{background:var(--green);border:1px solid var(--greent);border-radius:5px;color:var(--greent);font-weight:700;font-size:.78rem;padding:3px 7px;text-align:center}
 .rbtn{background:transparent;border:1px solid #1a4a1a;border-radius:5px;color:#4a8a4a;font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0 8px;white-space:nowrap}
 .rbtn:hover{background:var(--green);border-color:var(--greent);color:var(--greent)}
-.pcols{display:grid;grid-template-columns:44px 70px 1fr 60px 62px;gap:9px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+.pcols{display:grid;grid-template-columns:56px 32px 48px 1fr 58px 62px;gap:10px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+.pcols .pcol-type{margin-left:6px}
+.pcols .pcol-size{margin-left:-7px}
 .pcols span{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
 .emptystate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;color:var(--muted);padding:50px 20px;text-align:center}
 .emptyicon{font-size:2.6rem;opacity:.2}
@@ -192,8 +220,10 @@ select:disabled{opacity:.3;cursor:not-allowed}
   <div id="find-content">
     <div class="fgroup"><span class="slabel">Brand</span><div class="chip-row" id="cr-brand"></div></div>
     <div class="fgroup"><span class="slabel">Type</span><div class="chip-row" id="cr-type"></div></div>
-    <div class="fgroup"><span class="slabel">Lot Number</span><select id="sel-lot"><option value="">— Select a lot —</option></select></div>
-    <div class="fgroup"><span class="slabel">Style / Model</span><select id="sel-style" disabled><option value="">— Select a style —</option></select></div>
+    <div class="fg-lotstyle">
+      <div class="fgroup ls-lot"><span class="slabel">Lot Number</span><select id="sel-lot"><option value="">— Select a lot —</option></select></div>
+      <div class="fgroup ls-style"><span class="slabel">Style / Model</span><select id="sel-style" disabled><option value="">— Select a style —</option></select></div>
+    </div>
     <div class="icard" id="icard">
       <div class="ic-item"><div class="ic-lbl">Aisle</div><div class="ic-val" id="ic-aisle">—</div></div>
       <div class="ic-item"><div class="ic-lbl">Color / Style</div><div class="ic-val" id="ic-brand">—</div></div>
@@ -202,6 +232,12 @@ select:disabled{opacity:.3;cursor:not-allowed}
     <span class="slabel">Size Type</span>
     <div class="chip-row" id="cr-sizetype"></div>
     <div class="sz-hint" id="sz-hint">Tap to count, tap again to add more</div>
+    <!-- NOTE (size chips — keep-as-is marker): current size chip styling lives in CSS rules
+         `.sgrid` (the grid container) and `.szchip` / `.szchip.counted` / `.szchip.two-line`
+         / `.csz` / `.cst` / `.cbadge` / `.cclr` / keyframes `chipBounce` in the <style> block.
+         Rendering logic is in `renderSizeChips()` (search for it in the JS section). Left
+         untouched per request; revert point if the new chip-row spacing ever needs rolling back
+         for size chips specifically. -->
     <div class="sgrid" id="sgrid"><span class="sempty">Select brand, type, lot and style first.</span></div>
   </div>
 </div>
@@ -400,6 +436,83 @@ function aisleSortKey(a){
   if(/^up/i.test(s))return[2,9000,s];
   const n=parseFloat(s);if(!isNaN(n))return[1,n,''];
   return[3,9999,s];
+}
+
+// Lay out chips in a .chip-row so that:
+//   - chips are split into balanced lines with AT MOST 3 chips per line
+//     (fewer lines preferred; when counts don't divide evenly, earlier lines get +1)
+//   - every chip on the same line has the SAME width
+//   - each line fills the container's inner width exactly
+//   - on narrow screens, font-size is scaled DOWN per line when the text wouldn't fit
+//     its allotted width (uniform scale across the line so chips look consistent)
+// Called after populating #cr-brand, #cr-type, #cr-sizetype, and on window resize.
+function balanceChipRow(rowEl){
+  if(!rowEl)return;
+  // Reset prior breaks + inline width/font-size so we can measure natural sizes cleanly.
+  rowEl.querySelectorAll('.chip-break').forEach(b=>b.remove());
+  const chips=[...rowEl.children];
+  chips.forEach(c=>{c.style.width='';c.style.fontSize='';});
+  const N=chips.length;
+  if(N===0)return;
+
+  // Natural width of each chip at base font-size (used to decide when text won't fit).
+  const nats=chips.map(c=>c.getBoundingClientRect().width);
+
+  // Balanced line partition — minimum line count such that each line has ≤ 3 chips,
+  // with sizes differing by at most 1 (extra chips go to the earliest lines).
+  //   N=1→[1]  N=2→[2]  N=3→[3]  N=4→[2,2]  N=5→[3,2]  N=6→[3,3]
+  //   N=7→[3,2,2]  N=8→[3,3,2]  N=9→[3,3,3]  etc.
+  const lineCount=Math.ceil(N/3);
+  const base=Math.floor(N/lineCount);
+  const extras=N%lineCount;
+  const lineSizes=[];
+  for(let L=0;L<lineCount;L++)lineSizes.push(base+(L<extras?1:0));
+
+  // Build groups (chips + matching natural widths) and insert a flex-break between groups.
+  const groups=[];let cursor=0;
+  for(const size of lineSizes){
+    groups.push({chips:chips.slice(cursor,cursor+size),nats:nats.slice(cursor,cursor+size)});
+    cursor+=size;
+  }
+  for(let L=1;L<groups.length;L++){
+    const br=document.createElement('div');br.className='chip-break';
+    rowEl.insertBefore(br,groups[L].chips[0]);
+  }
+
+  // Container inner width + flex gap.
+  const cs=getComputedStyle(rowEl);
+  const inner=rowEl.clientWidth-parseFloat(cs.paddingLeft||0)-parseFloat(cs.paddingRight||0);
+  const gap=parseFloat(cs.columnGap||cs.gap||0)||8;
+
+  // Horizontal padding + border on .cb (padding:9px 14px + border:1px) — the "chrome"
+  // around the text that doesn't scale with font-size.
+  const CHIP_CHROME=30;
+  const rootFS=parseFloat(getComputedStyle(document.documentElement).fontSize)||16;
+  const BASE_FS_PX=0.78*rootFS; // .cb font-size is .78rem
+  const MIN_SCALE=0.62;         // don't shrink below ~.48rem; below that, ellipsis takes over
+
+  for(const g of groups){
+    const count=g.chips.length;
+    const avail=inner-gap*(count-1);
+    const baseW=Math.floor(avail/count);
+    // Spread the rounding remainder (0..count-1 px) across the first chips so widths
+    // sum to `avail` exactly and the line fills the row flush.
+    const remainder=avail-baseW*count;
+
+    // If the widest chip on this line won't fit its allotted width, scale the
+    // font-size down uniformly so the whole line stays consistent.
+    const maxNat=Math.max.apply(null,g.nats);
+    let scale=1;
+    if(maxNat>baseW){
+      const availText=Math.max(1,baseW-CHIP_CHROME);
+      const natText=Math.max(1,maxNat-CHIP_CHROME);
+      scale=Math.max(MIN_SCALE,availText/natText);
+    }
+    g.chips.forEach((c,idx)=>{
+      c.style.width=(baseW+(idx<remainder?1:0))+'px';
+      if(scale<1)c.style.fontSize=(BASE_FS_PX*scale).toFixed(2)+'px';
+    });
+  }
 }
 
 // ── Sheet parsers ──
@@ -848,6 +961,10 @@ function renderFindPage(){
     tcr.appendChild(b);
   });
 
+  // Balance brand + type chip rows across two lines when they don't fit on one.
+  // rAF ensures layout is committed before we measure offsetTop.
+  requestAnimationFrame(()=>{balanceChipRow(bcr);balanceChipRow(tcr);});
+
   // Lot dropdown
   const sl=document.getElementById('sel-lot');
   const lots=[...new Set(inventory.filter(i=>(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type)).map(i=>i.lot))];
@@ -917,6 +1034,8 @@ function renderFindPage(){
     }
   }
   document.getElementById('sz-hint').style.display=entry&&F.sizeType?'block':'none';
+  // Apply the equal-width / max-3-per-line layout to the size-type chips too.
+  requestAnimationFrame(()=>balanceChipRow(stcr));
   renderSizeChips();updateAddBtn();
 }
 
@@ -1008,7 +1127,8 @@ function renderPickList(){
   sorted.forEach(item=>{const k=item.aisle!=null?String(item.aisle):'Unknown';if(!byAisle[k]){byAisle[k]=[];aisleOrder.push(k);}byAisle[k].push(item);});
   const n=sorted.length,na=aisleOrder.length;
   stats.innerHTML=`<strong>${n}</strong> item${n!==1?'s':''} across <strong>${na}</strong> aisle${na!==1?'s':''}`;
-  let html=`<div class="pcols"><span>Type</span><span>Size</span><span>Ordered</span><span>In Stock</span><span></span></div>`;
+  // 6 header cells to match the 6-column .prow grid (col 4 is the flexible spacer).
+  let html=`<div class="pcols"><span>Ordered</span><span class="pcol-type">Type</span><span class="pcol-size">Size</span><span></span><span>In Stock</span><span></span></div>`;
   aisleOrder.forEach(aisle=>{
     const ai=byAisle[aisle],byLot={},lotOrder=[];
     ai.forEach(item=>{const k=item.lot+'||'+item.model;if(!byLot[k]){byLot[k]=[];lotOrder.push(k);}byLot[k].push(item);});
@@ -1020,7 +1140,8 @@ function renderPickList(){
       items.forEach(item=>{
         const oc=item.ordered>0?'ocount hc':'ocount',ol=item.ordered>0?item.ordered:'—';
         const tl=TL[item.sizeType]||item.sizeType;
-        html+=`<div class="prow" data-id="${item.id}"><div class="ptyp">${tl}</div><div class="psz">${item.size}</div><div><span class="${oc}">${ol}</span></div><div><span class="qbadge">${item.qty}</span></div><button class="rbtn" onclick="removeItem('${item.id}')">Picked</button></div>`;
+        // 6 cells: Ordered | Type | Size | (spacer) | In Stock | Picked
+        html+=`<div class="prow" data-id="${item.id}"><div><span class="${oc}">${ol}</span></div><div class="ptyp">${tl}</div><div class="psz">${item.size}</div><div></div><div><span class="qbadge">${item.qty}</span></div><button class="rbtn" onclick="removeItem('${item.id}')">Picked</button></div>`;
       });
       html+=`</div>`;
     });
@@ -1189,6 +1310,13 @@ function init(){
   document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
   document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
   document.getElementById('file-input').addEventListener('change',async e=>{for(const f of e.target.files)await importFile(f);e.target.value='';});
+  // Re-balance brand/type/size-type chip rows on resize (debounced) so the equal-width,
+  // max-3-per-line layout stays flush across viewport size changes.
+  let _rzT;window.addEventListener('resize',()=>{clearTimeout(_rzT);_rzT=setTimeout(()=>{
+    balanceChipRow(document.getElementById('cr-brand'));
+    balanceChipRow(document.getElementById('cr-type'));
+    balanceChipRow(document.getElementById('cr-sizetype'));
+  },120);});
   renderFindPage();renderReviewNav();updateNavPill();
 }
 init();
