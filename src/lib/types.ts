@@ -70,13 +70,20 @@ export interface ImportedFile {
   importedAt: number; // epoch ms
 }
 
+/** One pick-list row. `size` is the raw label ("40", "M", "15.5/32-33") and
+ *  `sizeType` carries Regular/Short/Long (or "sizes" for flat systems) so the
+ *  pick-list UI can render Type and Size in separate columns. `aisle` is
+ *  snapshotted at add-time for the aisle-grouped print layout. */
 export interface PickListEntry {
   id: string;
   brand: string;
   model: string;
   lot: string;
   category: Category;
+  sizeType: string;
   size: string;
+  aisle: number | string | null;
+  flag: string | null;
   qty: number;
   stock: number;
   order: number;

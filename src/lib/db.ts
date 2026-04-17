@@ -121,6 +121,22 @@ export async function getPickList(): Promise<PickListEntry[]> {
   return db.picklist.orderBy('order').toArray();
 }
 
+export async function removeFromPickList(id: string): Promise<void> {
+  await db.picklist.delete(id);
+}
+
+export async function clearPickList(): Promise<void> {
+  await db.picklist.clear();
+}
+
+export async function updatePickListQty(id: string, qty: number): Promise<void> {
+  if (qty <= 0) {
+    await db.picklist.delete(id);
+    return;
+  }
+  await db.picklist.update(id, { qty });
+}
+
 export async function counts(): Promise<{ inventory: number; unclassified: number; files: number }> {
   const [inventory, unclassified, files] = await Promise.all([
     db.inventory.count(),

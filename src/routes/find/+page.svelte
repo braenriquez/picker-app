@@ -207,7 +207,10 @@
           model: entry.model,
           lot: entry.lot,
           category: entry.category,
-          size: sizeTabLabel(typeKey, size),
+          sizeType: typeKey,
+          size,
+          aisle: entry.aisle,
+          flag: entry.flag,
           qty,
           stock,
           order: 0
@@ -224,16 +227,6 @@
       console.error(err);
       toastState.show('Could not add — try again', 'error');
     }
-  }
-
-  /** Prefix the size with the tab letter for Standard items so "40R" vs
-   *  "40S" is unambiguous on the pick list. Non-standard entries keep the
-   *  raw size label. */
-  function sizeTabLabel(typeKey: string, size: string): string {
-    if (typeKey === 'regular') return `${size}R`;
-    if (typeKey === 'short') return `${size}S`;
-    if (typeKey === 'long') return `${size}L`;
-    return size;
   }
 
   function chipCount(size: string): number {
