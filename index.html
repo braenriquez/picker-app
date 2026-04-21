@@ -29,11 +29,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
 .hdr .sub{font-size:clamp(.5rem,1.8vw,.6rem);color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;line-height:1;margin-top:3px;white-space:nowrap}
 .hbadge{align-self:center;background:var(--accent);color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:1px;padding:3px 8px;border-radius:20px;display:none;flex-shrink:0}
 .hbadge.on{display:block}
-.hnav{flex:1 1 0;display:flex;align-items:stretch;justify-content:stretch;gap:2px;min-width:0}
+.hnav{flex:1 1 0;display:flex;align-items:stretch;justify-content:stretch;gap:2px;min-width:0;position:relative}
 .nb{flex:1 1 0;min-width:0;padding:4px 4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.55rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;transition:color .15s;position:relative;white-space:nowrap}
 .nb svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .nb.active{color:var(--accent)}
-.nb.active::after{content:'';position:absolute;bottom:-1px;left:16%;right:16%;height:2px;background:var(--accent);border-radius:3px 3px 0 0}
+.nav-indicator{position:absolute;bottom:-1px;left:0;height:2px;background:var(--accent);border-radius:3px 3px 0 0;pointer-events:none;will-change:transform,width;transform:translate3d(0,0,0)}
 .npill{position:absolute;top:2px;right:calc(50% - 20px);background:#cc2222;color:#fff;font-size:.55rem;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;border:1.5px solid var(--surface)}
 .npill.on{display:flex}
 /* Pages row: horizontal flex track with native scroll-snap. Each .page is a 100%-wide
@@ -118,7 +118,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .addbtn:hover{background:var(--accent2)}
 .addbtn:active{transform:scale(.98)}
 .addbtn:disabled{opacity:.28;cursor:not-allowed;transform:none}
-.add-btn-zone{flex-shrink:0;padding:8px 14px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:10px}
+.add-btn-zone{flex-shrink:0;padding:8px 14px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:10px;will-change:transform}
 .add-btn-zone.on{display:flex}
 .fbadge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:.67rem;font-weight:700;flex-shrink:0}
 .fC{background:var(--bluebg);color:var(--bluet)}.fP{background:var(--greenbg);color:var(--greenbt)}
@@ -301,6 +301,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
     <button class="nb" id="nav-settings" onclick="showPage('settings')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span>
     </button>
+    <span class="nav-indicator" id="nav-indicator"></span>
   </nav>
   <div class="hbadge" id="hbadge"></div>
 </header>
@@ -1067,7 +1068,6 @@ async function importFile(file){
 // Main pages live side-by-side in #page-scroll as horizontally-snapped flex slots.
 // Classifications is a separate fullscreen overlay, not part of the swipe track.
 const PAGE_ORDER=['find','list','review','settings'];
-let _navScrollSuppressUntil=0;  // pause scroll-listener's auto-active-update during programmatic scrollTo
 
 function visiblePageOrder(){
   // Review is hidden when there's nothing to review. Filter it out so index math
@@ -1083,8 +1083,11 @@ function setActivePage(which){
   document.querySelectorAll('#page-scroll > .page').forEach(p=>p.classList.remove('active'));
   const navEl=document.getElementById('nav-'+which);if(navEl)navEl.classList.add('active');
   const pageEl=document.getElementById('page-'+which);if(pageEl)pageEl.classList.add('active');
+  // Bar stays "on" as long as there's a Find-page selection — the sync loop translates
+  // it off-screen for non-Find slots, so it travels *with* the find page during swipes
+  // instead of vanishing the moment we leave.
   const zone=document.getElementById('add-btn-zone');
-  if(zone)zone.classList.toggle('on',which==='find'&&!!getEntry());
+  if(zone)zone.classList.toggle('on',!!getEntry());
   // Reset the complete-selection key when leaving Find so returning re-plays the reveal.
   if(which!=='find')_lastCompleteSelKey='';
   else if(typeof renderFindPage==='function')renderFindPage();
@@ -1112,30 +1115,75 @@ function showPage(which){
   const idx=slots.indexOf(which);
   if(idx<0)return;
   const scroller=document.getElementById('page-scroll');
-  // Suppress the scroll-listener while the smooth scroll runs, otherwise intermediate
-  // frames would flip nav highlights through every page we pass over.
-  _navScrollSuppressUntil=Date.now()+500;
+  // The scroll handler now animates the underline + bar continuously, so we let the
+  // smooth scroll's intermediate frames drive them naturally instead of suppressing.
   scroller.scrollTo({left:idx*scroller.clientWidth,behavior:'smooth'});
   setActivePage(which);
 }
 
-// Swipe detection: watch #page-scroll's scrollLeft, round to nearest slot index, flip
-// the active nav + trigger renders once the slide settles.
+// Continuous swipe sync: every scroll frame we update (a) the nav underline's position
+// and width by interpolating between the two surrounding buttons based on fractional
+// scroll progress, and (b) the bottom action bar's translateX so it travels with the
+// Find page rather than staying frozen while the page slides underneath it.
+let _navSyncRAF=0;
+let _navSettleT=0;
+function scheduleNavSync(){
+  if(_navSyncRAF)return;
+  _navSyncRAF=requestAnimationFrame(()=>{_navSyncRAF=0;updateNavSync();});
+}
+function updateNavSync(){
+  const scroller=document.getElementById('page-scroll');if(!scroller)return;
+  const w=scroller.clientWidth;if(w<=0)return;
+  const slots=visiblePageOrder();
+  const buttons=slots.map(p=>document.getElementById('nav-'+p)).filter(Boolean);
+  if(!buttons.length)return;
+  const raw=scroller.scrollLeft/w;
+  const progress=Math.max(0,Math.min(buttons.length-1,raw));
+  const lo=Math.floor(progress);
+  const hi=Math.min(buttons.length-1,lo+1);
+  const frac=progress-lo;
+  const nav=document.getElementById('hnav');if(!nav)return;
+  const navRect=nav.getBoundingClientRect();
+  const loRect=buttons[lo].getBoundingClientRect();
+  const hiRect=buttons[hi].getBoundingClientRect();
+  const left=(loRect.left-navRect.left)+(hiRect.left-loRect.left)*frac;
+  const width=loRect.width+(hiRect.width-loRect.width)*frac;
+  const ind=document.getElementById('nav-indicator');
+  if(ind){ind.style.transform=`translate3d(${left}px,0,0)`;ind.style.width=width+'px';}
+  // Flip the active accent color at the midpoint so the label matches the underline's
+  // lane. Pure visual; page renders still fire from the settle handler below.
+  const near=Math.round(progress);
+  buttons.forEach((b,i)=>b.classList.toggle('active',i===near));
+  // Slide the bottom bar in lockstep with the scroller. scrollLeft=0 is Find (natural
+  // position); any other slot translates it left by the scroll amount, carrying it
+  // off-screen with the find page.
+  const zone=document.getElementById('add-btn-zone');
+  if(zone)zone.style.transform=`translate3d(${-scroller.scrollLeft}px,0,0)`;
+}
+
 function initSwipeNav(){
   const scroller=document.getElementById('page-scroll');if(!scroller)return;
-  let t;
   scroller.addEventListener('scroll',()=>{
-    if(Date.now()<_navScrollSuppressUntil)return;
-    clearTimeout(t);
-    t=setTimeout(()=>{
+    scheduleNavSync();
+    // Debounced "settle" — once the slide stops, run the heavier per-page render work
+    // (pick list, review, settings) that setActivePage would normally trigger.
+    clearTimeout(_navSettleT);
+    _navSettleT=setTimeout(()=>{
       const w=scroller.clientWidth;if(w<=0)return;
       const slots=visiblePageOrder();
       const idx=Math.max(0,Math.min(slots.length-1,Math.round(scroller.scrollLeft/w)));
       const which=slots[idx];if(!which)return;
       const curActive=document.querySelector('.nb.active');
-      if(curActive&&curActive.id==='nav-'+which)return;
+      if(curActive&&curActive.id==='nav-'+which){
+        // Active already matches — still make sure per-page render hooks ran.
+        if(which==='list')renderPickList();
+        else if(which==='review')renderReview();
+        else if(which==='settings')renderSettings();
+        else if(which==='find')renderFindPage();
+        return;
+      }
       setActivePage(which);
-    },90);
+    },120);
   },{passive:true});
   // On viewport resize, re-anchor to the currently-active page so slot math stays aligned.
   let rT;
@@ -1144,10 +1192,11 @@ function initSwipeNav(){
       const active=document.querySelector('.nb.active');
       const which=active?active.id.replace('nav-',''):'find';
       const slots=visiblePageOrder();const idx=Math.max(0,slots.indexOf(which));
-      _navScrollSuppressUntil=Date.now()+300;
       scroller.scrollLeft=idx*scroller.clientWidth;
+      scheduleNavSync();
     },80);
   });
+  scheduleNavSync();
 }
 
 // ── Find page ──
