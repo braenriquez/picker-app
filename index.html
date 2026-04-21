@@ -116,6 +116,19 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .btn-d:hover{background:var(--red);color:var(--text)}
 .ag{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;animation:fadeUp .18s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes completeIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+@keyframes completeOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.05)}}
+@keyframes circleDraw{to{stroke-dashoffset:0}}
+@keyframes checkDraw{to{stroke-dashoffset:0}}
+@keyframes completePulse{0%,100%{opacity:1}50%{opacity:.5}}
+#complete-overlay{position:fixed;inset:0;z-index:500;background:rgba(15,15,15,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:0}
+#complete-overlay.show{display:flex;animation:completeIn .4s cubic-bezier(.34,1.4,.64,1) forwards}
+#complete-overlay.hide{animation:completeOut .35s ease-in forwards}
+#complete-check{width:90px;height:90px;margin-bottom:28px}
+#complete-check .c-circle{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;pathLength:1;animation:circleDraw .55s ease-out forwards .05s}
+#complete-check .c-check{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;pathLength:1;animation:checkDraw .3s ease-out forwards .55s}
+#complete-title{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:5px;color:var(--accent);margin-bottom:10px}
+#complete-sub{font-size:.65rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;animation:completePulse 1.2s ease-in-out infinite .8s}
 .ah{background:var(--s2);border-bottom:1px solid var(--border);padding:8px 15px;display:flex;align-items:center;gap:8px}
 .albl{font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
 .anum{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--accent);letter-spacing:1px;line-height:1}
@@ -329,6 +342,14 @@ select:disabled{opacity:.3;cursor:not-allowed}
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
   </button>
 </nav>
+<div id="complete-overlay">
+  <svg id="complete-check" viewBox="0 0 52 52">
+    <circle class="c-circle" cx="26" cy="26" r="23" pathLength="1"/>
+    <path class="c-check" d="M14 27l9 9 15-16" pathLength="1"/>
+  </svg>
+  <div id="complete-title">All Picked</div>
+  <div id="complete-sub">Returning to Find…</div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1268,7 +1289,27 @@ function renderPickList(){
   updateQtyBadgeWidth();
 }
 
-function removeItem(id){pickList=pickList.filter(p=>p.id!==id);save(SK.picklist,pickList);updateNavPill();renderPickList();}
+function showCompleteAnimation(){
+  const el=document.getElementById('complete-overlay');
+  // Reset SVG animations by cloning the element so keyframes replay cleanly
+  const svg=el.querySelector('#complete-check');
+  const clone=svg.cloneNode(true);svg.parentNode.replaceChild(clone,svg);
+  el.classList.remove('hide');
+  el.classList.add('show');
+  setTimeout(()=>{
+    el.classList.remove('show');
+    el.classList.add('hide');
+    setTimeout(()=>{el.classList.remove('hide');showPage('find');},350);
+  },2400);
+}
+
+function removeItem(id){
+  pickList=pickList.filter(p=>p.id!==id);
+  save(SK.picklist,pickList);
+  updateNavPill();
+  if(pickList.length===0){showCompleteAnimation();}
+  else{renderPickList();}
+}
 function clearPickList(){pickList=[];save(SK.picklist,pickList);updateNavPill();renderPickList();}
 
 function updateNavPill(){
