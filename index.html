@@ -138,7 +138,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .prow:hover{background:rgba(200,169,110,.03)}
 .ptyp{font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap}
 .psz{font-size:.88rem;font-weight:700;color:var(--text)}
-.ocount{font-size:.8rem;font-weight:700;color:var(--muted);background:var(--s2);border:1.5px dashed var(--border);border-radius:5px;min-width:28px;height:25px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.ocount{font-size:.8rem;font-weight:700;color:var(--muted);background:var(--s2);border:1.5px dashed var(--border);border-radius:5px;min-width:var(--ordered-badge-w,28px);height:25px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .ocount.hc{background:#1e3010;border:1.5px solid #5a8a2a;color:#9dcc4a}
 .qbadge{display:inline-block;background:var(--green);border:1px solid var(--greent);border-radius:5px;color:var(--greent);font-weight:700;font-size:.78rem;padding:3px 7px;text-align:center;min-width:var(--qty-badge-w,auto)}
 .rbtn{background:transparent;border:1px solid #1a4a1a;border-radius:5px;color:#4a8a4a;font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0 8px;white-space:nowrap}
@@ -1190,6 +1190,18 @@ function onAddToList(){
 // ── Pick list ──
 const TL={regular:'R',short:'S',long:'L','—':'—'};
 
+function updateOrderedBadgeWidth(){
+  if(!pickList.length)return;
+  const vals=[...new Set(pickList.map(p=>p.ordered>0?p.ordered:'—'))];
+  const probe=document.createElement('span');
+  probe.style.cssText="position:absolute;visibility:hidden;white-space:nowrap;font-size:.8rem;font-weight:700;font-family:'DM Sans',sans-serif;padding:0 5px";
+  document.body.appendChild(probe);
+  let maxW=28;
+  vals.forEach(v=>{probe.textContent=String(v);maxW=Math.max(maxW,probe.getBoundingClientRect().width);});
+  document.body.removeChild(probe);
+  document.documentElement.style.setProperty('--ordered-badge-w',Math.ceil(maxW)+'px');
+}
+
 function updateQtyBadgeWidth(){
   if(!pickList.length)return;
   // Measure every unique qty value; DM Sans is proportional so we can't just use the largest number.
@@ -1252,6 +1264,7 @@ function renderPickList(){
   });
   body.innerHTML=html;
   updateTypeColWidth();
+  updateOrderedBadgeWidth();
   updateQtyBadgeWidth();
 }
 
