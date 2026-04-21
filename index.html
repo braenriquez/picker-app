@@ -81,11 +81,11 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .ic-val{color:var(--text);font-weight:600;font-size:.86rem}
 .sgrid{display:flex;flex-wrap:wrap;gap:9px;min-height:50px;margin-bottom:20px;align-items:flex-start;align-content:flex-start}
 .sempty{font-size:.8rem;color:var(--muted);font-style:italic;padding:8px 0}
-.szchip{position:relative;background:var(--green);border:1.5px solid var(--greent);border-radius:8px;color:var(--greent);font-weight:700;cursor:pointer;user-select:none;transition:background .12s,border-color .12s;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 9px 7px;gap:2px;margin-top:8px;margin-left:8px}
+.szchip{position:relative;background:var(--green);border:1.5px solid var(--greent);border-radius:8px;color:var(--greent);font-weight:700;cursor:pointer;user-select:none;transition:background .12s,border-color .12s;width:var(--szchip-w,52px);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 9px 7px;gap:2px;margin-top:8px;margin-left:8px}
 .szchip:active{transform:scale(.9)}
 .szchip.counted{background:var(--accentbg);border-color:var(--accent2);color:var(--accent)}
 .csz{font-size:1rem;font-weight:700;line-height:1}
-.szchip.two-line{min-width:60px;padding:9px 10px 8px}
+.szchip.two-line{width:var(--szchip-w,60px);padding:9px 10px 8px}
 .szchip.two-line .csz{display:flex;flex-direction:column;align-items:center;gap:3px}
 .szchip.two-line .csz-top{font-size:1rem;font-weight:700;line-height:1;letter-spacing:.5px}
 .szchip.two-line .csz-sub{font-size:.58rem;font-weight:500;line-height:1;opacity:.7;letter-spacing:.3px}
@@ -1214,6 +1214,22 @@ function renderSizeChips(){
     chip.querySelector('.cclr').addEventListener('click',e=>{e.stopPropagation();clearChip(sz,chip);});
     grid.appendChild(chip);
   });
+  updateSzChipWidth();
+}
+
+function updateSzChipWidth(){
+  // Clear the var so we measure natural (content-driven) widths, not the previously-locked uniform width.
+  document.documentElement.style.removeProperty('--szchip-w');
+  const chips=document.querySelectorAll('#sgrid .szchip');
+  if(!chips.length)return;
+  let maxW=52;
+  chips.forEach(c=>{
+    // Temporarily unset width so the chip reflows to its natural content size.
+    const prev=c.style.width;c.style.width='auto';
+    maxW=Math.max(maxW,c.getBoundingClientRect().width);
+    c.style.width=prev;
+  });
+  document.documentElement.style.setProperty('--szchip-w',Math.ceil(maxW)+'px');
 }
 
 function tapChip(sz,el,stock){
