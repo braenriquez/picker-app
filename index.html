@@ -1105,13 +1105,15 @@ function visiblePageOrder(){
   });
 }
 
+// Only handles immediate-feedback class flips + per-page render hooks. Bar visibility
+// and continuous-swipe state live entirely inside updateNavSync so there's a single
+// source of truth — preventing the race where .page.active and the scroll position
+// would disagree and leave the bar hidden on the Find page.
 function setActivePage(which){
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('#page-scroll > .page').forEach(p=>p.classList.remove('active'));
   const navEl=document.getElementById('nav-'+which);if(navEl)navEl.classList.add('active');
   const pageEl=document.getElementById('page-'+which);if(pageEl)pageEl.classList.add('active');
-  const zone=document.getElementById('add-btn-zone');
-  if(zone)zone.classList.toggle('on',which==='find'&&!!getEntry());
   // Reset the complete-selection key when leaving Find so returning re-plays the reveal.
   if(which!=='find')_lastCompleteSelKey='';
   else if(typeof renderFindPage==='function')renderFindPage();
@@ -1125,6 +1127,9 @@ function setActivePage(which){
     balanceChipRow(document.getElementById('cr-type'));
     balanceChipRow(document.getElementById('cr-sizetype'));
   });
+  // Let the sync loop reconcile bar visibility + indicator from the current scroll
+  // position (it may not match `which` yet if a smooth-scroll is still animating).
+  scheduleNavSync();
 }
 
 function showPage(which){
@@ -1174,16 +1179,23 @@ function updateNavSync(){
   const width=loRect.width+(hiRect.width-loRect.width)*frac;
   const ind=document.getElementById('nav-indicator');
   if(ind){ind.style.transform=`translate3d(${left}px,0,0)`;ind.style.width=width+'px';}
-  // Flip the active accent color at the midpoint so the label matches the underline's
-  // lane. Pure visual; page renders still fire from the settle handler below.
+  // Flip both .nb.active AND .page.active together so every consumer (updateAddBtn,
+  // renders, CSS) reads a consistent "which page is current" signal. Previously only
+  // .nb.active moved here, letting .page.active drift out of sync and triggering the
+  // bar-disappears-on-Find bug.
   const near=Math.round(progress);
   buttons.forEach((b,i)=>b.classList.toggle('active',i===near));
+  slots.forEach((p,i)=>{
+    const el=document.getElementById('page-'+p);
+    if(el)el.classList.toggle('active',i===near);
+  });
   // Slide the bottom bar with the scroller. Only display:flex while Find is at least
   // partially in view (scrollLeft < clientWidth) — once fully past Find the bar is
   // removed from layout so it can't blank-out the content below other pages.
+  // This is the ONLY place that toggles .add-btn-zone.on.
   const zone=document.getElementById('add-btn-zone');
-  if(zone&&getEntry()){
-    if(scroller.scrollLeft<w){
+  if(zone){
+    if(getEntry()&&scroller.scrollLeft<w){
       zone.classList.add('on');
       zone.style.transform=`translate3d(${-scroller.scrollLeft}px,0,0)`;
     }else{
@@ -1197,24 +1209,15 @@ function initSwipeNav(){
   const scroller=document.getElementById('page-scroll');if(!scroller)return;
   scroller.addEventListener('scroll',()=>{
     scheduleNavSync();
-    // Debounced "settle" — once the slide stops, run the heavier per-page render work
-    // (pick list, review, settings) that setActivePage would normally trigger.
+    // Debounced "settle" — once the slide stops, run per-page render hooks. Always
+    // call setActivePage (no shortcut) so the full state stays consistent even when
+    // the scroll-sync loop already flipped .nb.active + .page.active ahead of us.
     clearTimeout(_navSettleT);
     _navSettleT=setTimeout(()=>{
       const w=scroller.clientWidth;if(w<=0)return;
       const slots=visiblePageOrder();
       const idx=Math.max(0,Math.min(slots.length-1,Math.round(scroller.scrollLeft/w)));
-      const which=slots[idx];if(!which)return;
-      const curActive=document.querySelector('.nb.active');
-      if(curActive&&curActive.id==='nav-'+which){
-        // Active already matches — still make sure per-page render hooks ran.
-        if(which==='list')renderPickList();
-        else if(which==='review')renderReview();
-        else if(which==='settings')renderSettings();
-        else if(which==='find')renderFindPage();
-        return;
-      }
-      setActivePage(which);
+      const which=slots[idx];if(which)setActivePage(which);
     },120);
   },{passive:true});
   // On viewport resize, re-anchor to the currently-active page so slot math stays aligned.
@@ -1440,13 +1443,11 @@ function updateAddBtn(){
   const hasItems=Object.values(F.chipCountsByType).some(d=>Object.values(d).some(v=>v>0));
   const btn=document.getElementById('add-btn');
   btn.disabled=!hasItems;
-  const zone=document.getElementById('add-btn-zone');
-  if(zone){
-    const onFind=document.getElementById('page-find').classList.contains('active');
-    zone.classList.toggle('on',onFind&&!!getEntry());
-  }
   requestAnimationFrame(fitAddBtnText);
   saveFindState();
+  // Bar visibility is derived by updateNavSync from scroll position + getEntry().
+  // Trigger a re-sync in case getEntry() just flipped (e.g. user cleared selection).
+  scheduleNavSync();
 }
 
 // Smooth-scrolls the Find page to the bottom so the size chips come into view. One-frame
