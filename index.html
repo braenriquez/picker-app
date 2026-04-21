@@ -82,10 +82,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .az-val{color:var(--accent);font-weight:700;font-size:1rem;letter-spacing:.4px;line-height:1.15;white-space:nowrap}
 /* Single-line color/style tag shown in-flow within the Find page, just above size-type chips.
    Hidden entirely when the selected entry has no meaningful color/fabric descriptor. */
-.istyle{display:none;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:14px;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.istyle.on{display:flex}
-.istyle-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:600;flex-shrink:0}
-.istyle-val{color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis}
 .sgrid{display:flex;flex-wrap:wrap;gap:9px;min-height:50px;margin-bottom:20px;align-items:flex-start;align-content:flex-start}
 .sempty{font-size:.8rem;color:var(--muted);font-style:italic;padding:8px 0}
 .szchip{position:relative;background:var(--green);border:1.5px solid var(--greent);border-radius:8px;color:var(--greent);font-weight:700;cursor:pointer;user-select:none;transition:background .12s,border-color .12s;width:var(--szchip-w,52px);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 9px 7px;gap:2px;margin-top:8px;margin-left:8px}
@@ -284,8 +280,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
       <div class="fgroup ls-lot"><span class="slabel">Lot Number</span><div class="sel-wrap sel-wrap-lot"><select id="sel-lot"><option value="">Select</option></select><span class="sel-display placeholder" id="sel-lot-display">Select</span></div></div>
       <div class="fgroup ls-style"><span class="slabel">Style / Model</span><select id="sel-style" disabled><option value="">— Select a style —</option></select></div>
     </div>
-    <!-- Single-line color/style tag; rendered only when the entry has a meaningful flag value. -->
-    <div class="istyle" id="istyle"><span class="istyle-lbl">Color / Style</span><span class="istyle-val" id="ic-brand"></span></div>
     <span class="slabel">Size Type</span>
     <div class="chip-row" id="cr-sizetype"></div>
     <div class="sz-hint" id="sz-hint">Tap to count, tap again to add more</div>
@@ -1056,11 +1050,9 @@ function showPage(which){
   const navEl=document.getElementById('nav-'+which);if(navEl)navEl.classList.add('active');
   const zone=document.getElementById('add-btn-zone');
   if(zone)zone.classList.toggle('on',which==='find'&&!!getEntry());
-  // Inline Color/Style tag is Find-only; hide when navigating away, re-evaluate on return.
-  if(which!=='find'){
-    const ist=document.getElementById('istyle');if(ist)ist.classList.remove('on');
-    _lastCompleteSelKey='';  // reset so returning to a complete selection re-triggers scroll animation
-  }else if(typeof renderFindPage==='function')renderFindPage();
+  // Reset the complete-selection key when leaving Find so returning re-plays the scroll animation.
+  if(which!=='find')_lastCompleteSelKey='';
+  else if(typeof renderFindPage==='function')renderFindPage();
   if(which==='list')renderPickList();
   if(which==='review')renderReview();
   if(which==='settings')renderSettings();
@@ -1139,20 +1131,16 @@ function renderFindPage(){
   if(!F.style&&styles.length>0){F.style=styles[0].model;}
   ss.value=F.style;
 
-  // Entry-driven UI: Aisle/In-Stock live in the bottom action bar (see .add-btn-zone);
-  // the inline Color/Style tag appears within the page flow, hidden when the flag is noise.
+  // Entry-driven UI: Aisle/In-Stock live in the bottom action bar (see .add-btn-zone).
+  // The color/style flag is already visible as a tag in the Style/Model dropdown, so we
+  // don't render it separately here.
   const entry=getEntry();
-  const ist=document.getElementById('istyle');
   if(entry){
     document.getElementById('ic-aisle').textContent=entry.aisle!=null?String(entry.aisle):'—';
     const hasTTL=entry.ttl!=null&&entry.ttl>0;
     document.getElementById('ic-ship-lbl').textContent=hasTTL?'In Stock':'Shipment Date';
     document.getElementById('ic-ship').textContent=hasTTL?entry.ttl:(entry.shipdate||'—');
-    const fl=entry.flag!=null?String(entry.flag).trim():'';
-    const meaningful=fl&&fl.toUpperCase()!=='C'&&fl.toUpperCase()!=='NONE'&&isNaN(parseFloat(fl));
-    if(meaningful){document.getElementById('ic-brand').textContent=fl;ist.classList.add('on');}
-    else ist.classList.remove('on');
-  }else{ist.classList.remove('on');}
+  }
 
   // Size type chips
   const stcr=document.getElementById('cr-sizetype');stcr.innerHTML='';
