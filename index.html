@@ -122,6 +122,33 @@ select:disabled{opacity:.3;cursor:not-allowed}
 @keyframes checkDraw{to{stroke-dashoffset:0}}
 @keyframes completePulse{0%,100%{opacity:1}50%{opacity:.5}}
 #complete-overlay{position:fixed;inset:0;z-index:500;background:rgba(15,15,15,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:0}
+/* ── Gamification animation ── */
+@keyframes cardUp{from{opacity:0;transform:translateX(-50%) translateY(calc(-50% + 32px)) scale(.94)}to{opacity:1;transform:translateX(-50%) translateY(-50%) scale(1)}}
+@keyframes cardDown{from{opacity:1;transform:translateX(-50%) translateY(-50%) scale(1)}to{opacity:0;transform:translateX(-50%) translateY(calc(-50% + 16px)) scale(.96)}}
+@keyframes badgePop{0%{transform:scale(0) rotate(-20deg);opacity:0}70%{transform:scale(1.18) rotate(4deg);opacity:1}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes starPop{0%{transform:scale(0) rotate(-15deg);opacity:0}70%{transform:scale(1.3);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes barDrain{from{width:100%}to{width:0%}}
+@keyframes statFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+#go-backdrop{position:fixed;inset:0;z-index:490;background:rgba(15,15,15,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:none}
+#go-backdrop.show{display:block}
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:491;display:none}
+#go-card{position:fixed;top:50%;left:50%;transform:translateX(-50%) translateY(-50%);z-index:495;width:min(340px,90vw);background:var(--surface);border:1px solid var(--border2);border-radius:18px;padding:26px 28px 20px;text-align:center;box-shadow:0 12px 48px rgba(0,0,0,.7),0 0 0 1px rgba(200,169,110,.12),0 0 32px rgba(200,169,110,.06);display:none}
+#go-card.show{display:block;animation:cardUp .45s cubic-bezier(.34,1.5,.64,1) forwards}
+#go-card.hide{animation:cardDown .3s ease-in forwards}
+#go-badge-wrap{width:64px;height:64px;margin:0 auto 14px;transform:scale(0);opacity:0;animation:badgePop .5s cubic-bezier(.34,1.6,.64,1) forwards .1s}
+#go-badge-wrap svg{width:100%;height:100%}
+.go-ring{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:circleDraw .5s ease-out forwards .2s}
+.go-chk{fill:none;stroke:var(--accent);stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:checkDraw .28s ease-out forwards .65s}
+#go-title{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:4px;color:var(--text);margin-bottom:10px}
+#go-stars{display:none}
+.go-star{font-size:1.5rem;color:var(--accent);transform:scale(0);opacity:0;display:inline-block;animation:starPop .3s cubic-bezier(.34,1.6,.64,1) forwards}
+.go-star:nth-child(1){animation-delay:.7s}
+.go-star:nth-child(2){animation-delay:.9s}
+.go-star:nth-child(3){animation-delay:1.1s}
+#go-stat{font-size:.72rem;color:var(--muted);letter-spacing:.8px;margin-bottom:16px;opacity:0;animation:statFade .3s ease forwards 1.2s}
+#go-bar-wrap{height:3px;background:var(--border2);border-radius:2px;margin-bottom:12px;overflow:hidden}
+#go-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;width:100%}
+#go-hint{font-size:.58rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase}
 #complete-overlay.show{display:flex;animation:completeIn .4s cubic-bezier(.34,1.4,.64,1) forwards}
 #complete-overlay.hide{animation:completeOut .35s ease-in forwards}
 #complete-check{width:90px;height:90px;margin-bottom:28px}
@@ -349,6 +376,25 @@ select:disabled{opacity:.3;cursor:not-allowed}
   </svg>
   <div id="complete-title">All Picked</div>
   <div id="complete-sub">Returning to Find…</div>
+</div>
+<canvas id="confetti-canvas"></canvas>
+<div id="go-backdrop"></div>
+<div id="go-card">
+  <div id="go-badge-wrap">
+    <svg viewBox="0 0 52 52">
+      <circle class="go-ring" cx="26" cy="26" r="23" pathLength="1"/>
+      <path class="go-chk" d="M14 27l9 9 15-16" pathLength="1"/>
+    </svg>
+  </div>
+  <div id="go-title">Order Complete</div>
+  <div id="go-stars">
+    <span class="go-star">★</span>
+    <span class="go-star">★</span>
+    <span class="go-star">★</span>
+  </div>
+  <div id="go-stat"></div>
+  <div id="go-bar-wrap"><div id="go-bar"></div></div>
+  <div id="go-hint">Returning to Find…</div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -1289,6 +1335,89 @@ function renderPickList(){
   updateQtyBadgeWidth();
 }
 
+// ── Gamification animation ──
+let _sessionPicks=0;
+
+function launchConfetti(){
+  const cv=document.getElementById('confetti-canvas');
+  cv.width=window.innerWidth;cv.height=window.innerHeight;
+  cv.style.display='block';
+  const ctx=cv.getContext('2d');
+  const colors=['#c8a96e','#e8c98e','#7dcc7d','#6aabff','#f0ede8','#cc7755','#aaccff'];
+  // Two burst points — lower-left and lower-right corners of the card area
+  const cx1=cv.width*.22,cy1=cv.height*.72;
+  const cx2=cv.width*.78,cy2=cv.height*.72;
+  const particles=[];
+  const addBurst=(bx,by,dir)=>{
+    for(let i=0;i<45;i++){
+      const spread=Math.PI*.55;
+      const angle=dir+(Math.random()-.5)*spread;
+      const spd=5+Math.random()*9;
+      particles.push({x:bx,y:by,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
+        rot:Math.random()*Math.PI*2,rotV:(Math.random()-.5)*.25,
+        w:5+Math.random()*7,h:3+Math.random()*4,
+        color:colors[Math.floor(Math.random()*colors.length)],alpha:1,
+        shape:Math.random()>.3?'rect':'circle'});
+    }
+  };
+  addBurst(cx1,cy1,-Math.PI*.65);  // burst upper-left
+  addBurst(cx2,cy2,-Math.PI*.35);  // burst upper-right
+  const start=Date.now();
+  const fadStart=1800;
+  (function frame(){
+    const elapsed=Date.now()-start;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    let alive=false;
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.vy+=.18;p.vx*=.995;p.rot+=p.rotV;
+      if(elapsed>fadStart)p.alpha=Math.max(0,p.alpha-.025);
+      if(p.alpha>0&&p.y<cv.height+20){
+        alive=true;
+        ctx.save();ctx.globalAlpha=p.alpha;ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+        ctx.fillStyle=p.color;
+        if(p.shape==='circle'){ctx.beginPath();ctx.arc(0,0,p.w/2,0,Math.PI*2);ctx.fill();}
+        else{ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);}
+        ctx.restore();
+      }
+    });
+    if(alive)requestAnimationFrame(frame);
+    else cv.style.display='none';
+  })();
+}
+
+function showGamificationAnimation(itemCount){
+  const TOTAL=1800; // total display time in ms
+  const bd=document.getElementById('go-backdrop');
+  const card=document.getElementById('go-card');
+  const stat=document.getElementById('go-stat');
+  const bar=document.getElementById('go-bar');
+  // Reset all CSS animations by cloning animated children
+  ['go-badge-wrap','go-stars','go-stat'].forEach(id=>{
+    const el=document.getElementById(id);
+    const clone=el.cloneNode(true);el.parentNode.replaceChild(clone,el);
+  });
+  // Set stat text
+  document.getElementById('go-stat').textContent=`${itemCount} item${itemCount!==1?'s':''} picked`;
+  // Reset + set bar drain duration
+  const newBar=bar.cloneNode(true);bar.parentNode.replaceChild(newBar,bar);
+  newBar.style.animationDuration=TOTAL+'ms';
+  newBar.style.animationTimingFunction='linear';
+  newBar.style.animationFillMode='forwards';
+  newBar.style.animationName='barDrain';
+  // Switch to Find immediately so it's ready under the overlay
+  showPage('find');
+  // Show overlay on top
+  bd.classList.add('show');
+  card.classList.remove('hide');
+  card.classList.add('show');
+  launchConfetti();
+  setTimeout(()=>{
+    card.classList.remove('show');card.classList.add('hide');
+    bd.classList.remove('show');
+    setTimeout(()=>{card.classList.remove('hide');},300);
+  },TOTAL);
+}
+
 function showCompleteAnimation(){
   const el=document.getElementById('complete-overlay');
   // Reset SVG animations by cloning the element so keyframes replay cleanly
@@ -1304,13 +1433,15 @@ function showCompleteAnimation(){
 }
 
 function removeItem(id){
+  _sessionPicks++;
+  const isLast=pickList.length===1&&pickList[0].id===id;
   pickList=pickList.filter(p=>p.id!==id);
   save(SK.picklist,pickList);
   updateNavPill();
-  if(pickList.length===0){showCompleteAnimation();}
+  if(isLast){const n=_sessionPicks;_sessionPicks=0;showGamificationAnimation(n);}
   else{renderPickList();}
 }
-function clearPickList(){pickList=[];save(SK.picklist,pickList);updateNavPill();renderPickList();}
+function clearPickList(){_sessionPicks=0;pickList=[];save(SK.picklist,pickList);updateNavPill();renderPickList();}
 
 function updateNavPill(){
   const n=pickList.length;
