@@ -422,7 +422,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const CATEGORIES=['Suit','Jacket','Vest','Pants','Shirt','Jeans','Boys'];
-const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files'};
+const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs'};
 const DEFAULT_RULES=[
   {p:"will arrive|CANCELLED|cutting#|arrive on|minimum order",c:"__SKIP__"},
   {p:"\\bjean\\b|\\bjeans\\b|shorts",c:"Jeans"},
@@ -448,6 +448,36 @@ let pickList=load(SK.picklist,[]);
 let importedFiles=load(SK.files,[]);
 const F={brand:'',type:'',lot:'',style:'',sizeType:'',chipCountsByType:{}};
 function ctForType(t){return F.chipCountsByType[t]||(F.chipCountsByType[t]={});}
+
+// ── Find-page state persistence ──────────────────────────────────────────────
+// Saves the current Find selections so they survive a page reload / PWA relaunch.
+function saveFindState(){
+  save(SK.findState,{brand:F.brand,type:F.type,lot:F.lot,style:F.style,sizeType:F.sizeType,chipCountsByType:F.chipCountsByType});
+}
+// Restores saved state, validating each field against the current inventory so
+// a stale or removed lot/style doesn't leave the UI in a broken state.
+// Validation is chain-style: if brand no longer exists we stop; if lot no longer
+// exists under that brand+type we stop; etc. Chip counts are only restored when
+// the full selection (brand/type/lot/style) still resolves to a live entry.
+function restoreFindState(){
+  const s=load(SK.findState,null);
+  if(!s||!inventory.length)return;
+  const brands=[...new Set(inventory.map(i=>i.brand).filter(Boolean))];
+  if(!brands.includes(s.brand))return;
+  F.brand=s.brand;
+  const types=[...new Set(inventory.filter(i=>i.brand===s.brand).map(i=>i.category).filter(Boolean))];
+  if(!types.includes(s.type))return;
+  F.type=s.type;
+  const lots=[...new Set(inventory.filter(i=>i.brand===s.brand&&i.category===s.type).map(i=>i.lot).filter(Boolean))];
+  if(!lots.includes(s.lot))return;
+  F.lot=s.lot;
+  const models=inventory.filter(i=>i.brand===s.brand&&i.category===s.type&&i.lot===s.lot).map(i=>i.model);
+  if(!models.includes(s.style))return;
+  F.style=s.style;
+  // Full selection is valid — restore size type and chip counts.
+  F.sizeType=s.sizeType||'';
+  F.chipCountsByType=s.chipCountsByType||{};
+}
 
 function classifyModel(m){
   if(memory[m])return memory[m];
@@ -1285,7 +1315,7 @@ function renderFindPage(){
       [['regular','Regular'],['short','Short'],['long','Long']].forEach(([k,lbl])=>{
         if(entry[k]&&Object.keys(entry[k]).length){
           const b=document.createElement('button');b.className='cb'+(F.sizeType===k?' active':'');b.textContent=lbl;b.dataset.type=k;
-          b.onclick=()=>{F.sizeType=k;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===k));scrollToSizes();};
+          b.onclick=()=>_setSzType(k);
           stcr.appendChild(b);
         }
       });
@@ -1308,7 +1338,7 @@ function renderFindPage(){
       const sleeves=Object.keys(sleeveGroups).sort((a,b)=>{const na=parseFloat(a),nb=parseFloat(b);return isNaN(na)||isNaN(nb)?a.localeCompare(b):na-nb;});
       sleeves.forEach(sl=>{
         const b=document.createElement('button');b.className='cb'+(F.sizeType===sl?' active':'');b.textContent=sl;b.dataset.type=sl;
-        b.onclick=()=>{F.sizeType=sl;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===sl));scrollToSizes();};
+        b.onclick=()=>_setSzType(sl);
         stcr.appendChild(b);
       });
       if(!sleeves.includes(F.sizeType)){F.sizeType=sleeves[0]||'';const first=stcr.querySelector('.cb');if(first)first.classList.add('active');}
@@ -1323,9 +1353,12 @@ function renderFindPage(){
   renderSizeChips();updateAddBtn();
   // Auto-scroll to size chips once a full selection resolves to a real entry.
   maybeScrollToSizes();
+  saveFindState();
 }
 
 function getEntry(){return inventory.find(i=>i.lot===F.lot&&i.model===F.style&&(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type))||null;}
+// Switches the active size type, refreshes chips, scrolls to them, and persists.
+function _setSzType(k){F.sizeType=k;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===k));scrollToSizes();saveFindState();}
 
 function renderSizeChips(){
   const grid=document.getElementById('sgrid');grid.innerHTML='';
@@ -1413,6 +1446,7 @@ function updateAddBtn(){
     zone.classList.toggle('on',onFind&&!!getEntry());
   }
   requestAnimationFrame(fitAddBtnText);
+  saveFindState();
 }
 
 // Smooth-scrolls the Find page to the bottom so the size chips come into view. One-frame
@@ -1824,6 +1858,7 @@ function init(){
     fitLotColumn();
     fitAddBtnText();  // re-pick button text based on new available width
   },120);});
+  restoreFindState();
   renderFindPage();renderReviewNav();updateNavPill();
   // Pre-render non-find pages so their content is ready when the user swipes to them
   // (they're always in the DOM now, so latent render state can lag behind state changes).
