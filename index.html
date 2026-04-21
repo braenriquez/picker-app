@@ -131,19 +131,19 @@ select:disabled{opacity:.3;cursor:not-allowed}
    - Column 4 is a flexible spacer (1fr) that pushes In Stock + Picked to the right edge,
      so In Stock lands right next to the Picked button.
    - ocount / ocount.hc styling is unchanged from the original spec. */
-.prow{display:grid;grid-template-columns:56px 32px 48px 1fr 58px 62px;align-items:center;gap:10px;padding:9px 13px 9px 36px;border-bottom:1px solid rgba(46,46,46,.3);transition:background .1s}
+.prow{display:grid;grid-template-columns:56px var(--type-col-w,32px) 48px 1fr 58px 62px;align-items:center;gap:10px;padding:9px 13px 9px 36px;border-bottom:1px solid rgba(46,46,46,.3);transition:background .1s}
 .prow .ptyp{margin-left:6px}
 .prow .psz{margin-left:-7px}
 .prow:last-child{border-bottom:none}
 .prow:hover{background:rgba(200,169,110,.03)}
-.ptyp{font-size:.88rem;font-weight:700;color:var(--text)}
+.ptyp{font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap}
 .psz{font-size:.88rem;font-weight:700;color:var(--text)}
 .ocount{font-size:.8rem;font-weight:700;color:var(--muted);background:var(--s2);border:1.5px dashed var(--border);border-radius:5px;min-width:28px;height:25px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .ocount.hc{background:#1e3010;border:1.5px solid #5a8a2a;color:#9dcc4a}
 .qbadge{background:var(--green);border:1px solid var(--greent);border-radius:5px;color:var(--greent);font-weight:700;font-size:.78rem;padding:3px 7px;text-align:center}
 .rbtn{background:transparent;border:1px solid #1a4a1a;border-radius:5px;color:#4a8a4a;font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0 8px;white-space:nowrap}
 .rbtn:hover{background:var(--green);border-color:var(--greent);color:var(--greent)}
-.pcols{display:grid;grid-template-columns:56px 32px 48px 1fr 58px 62px;gap:10px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+.pcols{display:grid;grid-template-columns:56px var(--type-col-w,32px) 48px 1fr 58px 62px;gap:10px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
 .pcols .pcol-type{margin-left:6px}
 .pcols .pcol-size{margin-left:-7px}
 .pcols span{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
@@ -1190,6 +1190,19 @@ function onAddToList(){
 // ── Pick list ──
 const TL={regular:'R',short:'S',long:'L','—':'—'};
 
+function updateTypeColWidth(){
+  // Collect every type label that will appear in the list (including the column header).
+  const labels=['Type',...new Set(pickList.map(p=>TL[p.sizeType]||p.sizeType))];
+  // Measure natural text width with a hidden probe using the same font as .ptyp.
+  const probe=document.createElement('span');
+  probe.style.cssText="position:absolute;visibility:hidden;white-space:nowrap;font-size:.88rem;font-weight:700;font-family:'DM Sans',sans-serif";
+  document.body.appendChild(probe);
+  let maxW=32; // floor so very short labels (R/S/L) don't collapse the column
+  labels.forEach(lbl=>{probe.textContent=lbl;maxW=Math.max(maxW,probe.getBoundingClientRect().width);});
+  document.body.removeChild(probe);
+  document.documentElement.style.setProperty('--type-col-w',Math.ceil(maxW)+6+'px'); // +6px breathing room
+}
+
 function renderPickList(){
   const body=document.getElementById('picklist-body'),stats=document.getElementById('lstats');
   if(!pickList.length){body.innerHTML='<div class="emptystate"><div class="emptyicon">📋</div><p>Add items from the Find tab. Sorted by aisle.</p></div>';stats.textContent='No items yet';return;}
@@ -1223,6 +1236,7 @@ function renderPickList(){
     html+=`</div>`;
   });
   body.innerHTML=html;
+  updateTypeColWidth();
 }
 
 function removeItem(id){pickList=pickList.filter(p=>p.id!==id);save(SK.picklist,pickList);updateNavPill();renderPickList();}
