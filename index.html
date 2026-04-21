@@ -1150,7 +1150,7 @@ function renderFindPage(){
       [['regular','Regular'],['short','Short'],['long','Long']].forEach(([k,lbl])=>{
         if(entry[k]&&Object.keys(entry[k]).length){
           const b=document.createElement('button');b.className='cb'+(F.sizeType===k?' active':'');b.textContent=lbl;b.dataset.type=k;
-          b.onclick=()=>{F.sizeType=k;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===k));};
+          b.onclick=()=>{F.sizeType=k;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===k));scrollToSizes();};
           stcr.appendChild(b);
         }
       });
@@ -1173,7 +1173,7 @@ function renderFindPage(){
       const sleeves=Object.keys(sleeveGroups).sort((a,b)=>{const na=parseFloat(a),nb=parseFloat(b);return isNaN(na)||isNaN(nb)?a.localeCompare(b):na-nb;});
       sleeves.forEach(sl=>{
         const b=document.createElement('button');b.className='cb'+(F.sizeType===sl?' active':'');b.textContent=sl;b.dataset.type=sl;
-        b.onclick=()=>{F.sizeType=sl;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===sl));};
+        b.onclick=()=>{F.sizeType=sl;renderSizeChips();document.querySelectorAll('#cr-sizetype .cb').forEach(x=>x.classList.toggle('active',x.dataset.type===sl));scrollToSizes();};
         stcr.appendChild(b);
       });
       if(!sleeves.includes(F.sizeType)){F.sizeType=sleeves[0]||'';const first=stcr.querySelector('.cb');if(first)first.classList.add('active');}
@@ -1280,9 +1280,17 @@ function updateAddBtn(){
   requestAnimationFrame(fitAddBtnText);
 }
 
+// Smooth-scrolls the Find page to the bottom so the size chips come into view. One-frame
+// delay lets the DOM update first so scrollHeight reflects the full rendered page.
+function scrollToSizes(){
+  const scroller=document.getElementById('page-scroll');if(!scroller)return;
+  requestAnimationFrame(()=>{scroller.scrollTo({top:scroller.scrollHeight,behavior:'smooth'});});
+}
+
 // Auto-scroll: when brand+type+lot+style all resolve to an entry, smoothly scroll the
-// find page down so the size chips come into view. Tracked by a key so size-type or
-// chip-count re-renders don't re-trigger the scroll on every click.
+// find page down so the size chips come into view. Tracked by a key so chip-count
+// re-renders don't re-trigger the scroll on every click (size-type switches bypass this
+// function entirely and call scrollToSizes() directly).
 let _lastCompleteSelKey='';
 function maybeScrollToSizes(){
   const entry=getEntry();
@@ -1292,9 +1300,7 @@ function maybeScrollToSizes(){
   const key=`${F.brand}|${F.type}|${F.lot}|${F.style}`;
   if(key===_lastCompleteSelKey)return;
   _lastCompleteSelKey=key;
-  const scroller=document.getElementById('page-scroll');if(!scroller)return;
-  // Wait one frame for the size chips to render so scrollHeight reflects the full page.
-  requestAnimationFrame(()=>{scroller.scrollTo({top:scroller.scrollHeight,behavior:'smooth'});});
+  scrollToSizes();
 }
 
 function getSizeMapForType(entry,type){
