@@ -1153,6 +1153,12 @@ function renderFindPage(){
           stcr.appendChild(b);
         }
       });
+      // Auto-select first available tab if nothing is active yet (e.g. fresh style selection)
+      const availStd=['regular','short','long'].filter(k=>entry[k]&&Object.keys(entry[k]).length);
+      if(!availStd.includes(F.sizeType)){
+        F.sizeType=availStd[0]||'';
+        const first=stcr.querySelector('.cb');if(first)first.classList.add('active');
+      }
     }else if(sys==='shirt'){
       const sleeveGroups={};
       Object.entries(entry.sizes||{}).forEach(([lbl,qty])=>{
