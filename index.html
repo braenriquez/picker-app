@@ -339,6 +339,7 @@ const DEFAULT_RULES=[
   {p:"will arrive|CANCELLED|cutting#|arrive on|minimum order",c:"__SKIP__"},
   {p:"\\bjean\\b|\\bjeans\\b|shorts",c:"Jeans"},
   {p:"\\bshirt\\b|linen.shirt|LayDown|FrenchCuff|Adj\\.Convert|Adj\\.Slim|Linen-Shirt|Clean$|Slim-Fit$",c:"Shirt"},
+  {p:"TUX.*\\.(?:Black|White|Navy|Tan|Ivory|Charcoal|Grey|Gray)\\s+Pants",c:"Suit"},
   {p:"\\bpants?\\b",c:"Pants"},
   {p:"Rental BOYS\\.Pants|boys.*pants|BOYS.*PANT",c:"Pants"},
   {p:"jacket|blazer|BLZR|DinnerJacket|Carcoat|KnitCoat|Topcoat|Reversible",c:"Jacket"},
@@ -506,6 +507,9 @@ function balanceChipRow(rowEl){
   rowEl.querySelectorAll('.chip-break').forEach(b=>b.remove());
   const chips=[...rowEl.children];
   chips.forEach(c=>{c.style.width='';c.style.fontSize='';});
+  // If the container is hidden (e.g. Find page not active), getBoundingClientRect()
+  // returns width:0 — bail out now so we never bake in broken inline styles.
+  if(rowEl.getBoundingClientRect().width===0)return;
   const N=chips.length;
   if(N===0)return;
 
@@ -981,6 +985,13 @@ function showPage(which){
   if(which==='review')renderReview();
   if(which==='settings')renderSettings();
   if(which==='classifications')renderClassificationsPage();
+  // Re-measure chip rows when navigating to Find — they may have been balanced
+  // while the page was hidden (width:0), leaving bad inline styles behind.
+  if(which==='find')requestAnimationFrame(()=>{
+    balanceChipRow(document.getElementById('cr-brand'));
+    balanceChipRow(document.getElementById('cr-type'));
+    balanceChipRow(document.getElementById('cr-sizetype'));
+  });
 }
 
 // ── Find page ──
