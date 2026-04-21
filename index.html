@@ -74,14 +74,12 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .cb{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:9px 14px;cursor:pointer;transition:all .15s;white-space:nowrap}
 .cb:hover{border-color:var(--accent);color:var(--accent)}
 .cb.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
-/* Sticky sub-header below the title bar. Only two items (Aisle + In Stock) split the
-   bar evenly and are centered. Values are accentuated so they read like headline stats. */
-.icard{display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;flex-shrink:0;z-index:90}
-.icard.on{display:flex}
-.ic-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center}
-.ic-item+.ic-item{border-left:1px solid var(--border)}
-.ic-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:600}
-.ic-val{color:var(--accent);font-weight:700;font-size:1.05rem;letter-spacing:.5px}
+/* Info blocks live inside the bottom action bar (see .add-btn-zone). Each block
+   auto-sizes to its content; the Add button consumes the remaining space. */
+.az-info{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 10px;min-width:0}
+.az-info+.az-info{border-left:1px solid var(--border)}
+.az-lbl{font-size:.55rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:600;line-height:1.1;white-space:nowrap}
+.az-val{color:var(--accent);font-weight:700;font-size:1rem;letter-spacing:.4px;line-height:1.15;white-space:nowrap}
 /* Single-line color/style tag shown in-flow within the Find page, just above size-type chips.
    Hidden entirely when the selected entry has no meaningful color/fabric descriptor. */
 .istyle{display:none;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:14px;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -107,13 +105,13 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .cclr:hover{background:var(--red);color:#fff;border-color:var(--red)}
 @keyframes chipBounce{0%{transform:scale(1)}35%{transform:scale(1.22)}65%{transform:scale(.93)}100%{transform:scale(1)}}
 .szchip.bounce{animation:chipBounce .2s ease forwards}
-.addbtn{background:var(--accent);border:none;border-radius:10px;color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;padding:14px;cursor:pointer;width:100%;transition:background .15s}
+.addbtn{background:var(--accent);border:none;border-radius:10px;color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;padding:14px 10px;cursor:pointer;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s}
 .addbtn:hover{background:var(--accent2)}
 .addbtn:active{transform:scale(.98)}
 .addbtn:disabled{opacity:.28;cursor:not-allowed;transform:none}
 #page-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.add-btn-zone{flex-shrink:0;padding:8px 18px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none}
-.add-btn-zone.on{display:block}
+.add-btn-zone{flex-shrink:0;padding:8px 14px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:10px}
+.add-btn-zone.on{display:flex}
 .fbadge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:.67rem;font-weight:700;flex-shrink:0}
 .fC{background:var(--bluebg);color:var(--bluet)}.fP{background:var(--greenbg);color:var(--greenbt)}
 .ptopbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
@@ -259,7 +257,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 #no-inv p{font-size:.82rem;color:var(--muted);line-height:1.6}
 .sz-hint{font-size:.6rem;color:var(--muted);font-style:italic;margin-bottom:9px;display:none}
 @media print{
-  .hdr,.bnav,.tactions,.rbtn,.icard,#page-find,#page-review,#page-settings{display:none!important}
+  .hdr,.bnav,.tactions,.rbtn,.add-btn-zone,#page-find,#page-review,#page-settings{display:none!important}
   #page-list{display:block!important;padding:0}
   body{background:white;color:black}
   .ag{border:1px solid #ccc;margin-bottom:10px}
@@ -275,14 +273,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
   <div><h1>Gruppo Bravo</h1><div class="sub">Inventory &amp; Picking</div></div>
   <div class="hbadge" id="hbadge"></div>
 </header>
-
-<!-- Sticky sub-header: shows only on Find page when a full selection is active.
-     Lives as a flex child of body between header and scroll area so it's always
-     visible without overlapping content. -->
-<div class="icard" id="icard">
-  <div class="ic-item"><div class="ic-lbl">Aisle</div><div class="ic-val" id="ic-aisle">—</div></div>
-  <div class="ic-item"><div class="ic-lbl" id="ic-ship-lbl">In Stock</div><div class="ic-val" id="ic-ship">—</div></div>
-</div>
 
 <div id="page-scroll">
 <div class="page active" id="page-find">
@@ -363,7 +353,11 @@ select:disabled{opacity:.3;cursor:not-allowed}
 </div>
 </div>
 
+<!-- Bottom action bar: Aisle + In Stock (auto-sized, flex:0) and Add button (flex:1).
+     The button text adapts down a priority list to whatever fits the leftover space. -->
 <div class="add-btn-zone" id="add-btn-zone">
+  <div class="az-info"><div class="az-lbl">Aisle</div><div class="az-val" id="ic-aisle">—</div></div>
+  <div class="az-info"><div class="az-lbl" id="ic-ship-lbl">In Stock</div><div class="az-val" id="ic-ship">—</div></div>
   <button class="addbtn" id="add-btn" disabled>Add to Pick List</button>
 </div>
 
@@ -1062,14 +1056,11 @@ function showPage(which){
   const navEl=document.getElementById('nav-'+which);if(navEl)navEl.classList.add('active');
   const zone=document.getElementById('add-btn-zone');
   if(zone)zone.classList.toggle('on',which==='find'&&!!getEntry());
-  // Sticky icard + inline color/style tag are Find-only — hide on any other page.
+  // Inline Color/Style tag is Find-only; hide when navigating away, re-evaluate on return.
   if(which!=='find'){
-    const ic=document.getElementById('icard');if(ic)ic.classList.remove('on');
     const ist=document.getElementById('istyle');if(ist)ist.classList.remove('on');
-  }else{
-    // Returning to Find: let renderFindPage re-evaluate whether to show them.
-    if(typeof renderFindPage==='function')renderFindPage();
-  }
+    _lastCompleteSelKey='';  // reset so returning to a complete selection re-triggers scroll animation
+  }else if(typeof renderFindPage==='function')renderFindPage();
   if(which==='list')renderPickList();
   if(which==='review')renderReview();
   if(which==='settings')renderSettings();
@@ -1148,23 +1139,20 @@ function renderFindPage(){
   if(!F.style&&styles.length>0){F.style=styles[0].model;}
   ss.value=F.style;
 
-  // Info card (sticky sub-header): only shown on Find page when a full selection is active.
+  // Entry-driven UI: Aisle/In-Stock live in the bottom action bar (see .add-btn-zone);
+  // the inline Color/Style tag appears within the page flow, hidden when the flag is noise.
   const entry=getEntry();
-  const ic=document.getElementById('icard');
   const ist=document.getElementById('istyle');
-  const onFind=document.getElementById('page-find').classList.contains('active');
-  if(entry&&onFind){
-    ic.classList.add('on');
+  if(entry){
     document.getElementById('ic-aisle').textContent=entry.aisle!=null?String(entry.aisle):'—';
     const hasTTL=entry.ttl!=null&&entry.ttl>0;
     document.getElementById('ic-ship-lbl').textContent=hasTTL?'In Stock':'Shipment Date';
     document.getElementById('ic-ship').textContent=hasTTL?entry.ttl:(entry.shipdate||'—');
-    // Color / Style single-line tag: only render when entry has a meaningful flag value.
     const fl=entry.flag!=null?String(entry.flag).trim():'';
     const meaningful=fl&&fl.toUpperCase()!=='C'&&fl.toUpperCase()!=='NONE'&&isNaN(parseFloat(fl));
     if(meaningful){document.getElementById('ic-brand').textContent=fl;ist.classList.add('on');}
     else ist.classList.remove('on');
-  }else{ic.classList.remove('on');ist.classList.remove('on');}
+  }else{ist.classList.remove('on');}
 
   // Size type chips
   const stcr=document.getElementById('cr-sizetype');stcr.innerHTML='';
@@ -1210,6 +1198,8 @@ function renderFindPage(){
   // Apply the equal-width / max-3-per-line layout to the size-type chips too.
   requestAnimationFrame(()=>balanceChipRow(stcr));
   renderSizeChips();updateAddBtn();
+  // Auto-scroll to size chips once a full selection resolves to a real entry.
+  maybeScrollToSizes();
 }
 
 function getEntry(){return inventory.find(i=>i.lot===F.lot&&i.model===F.style&&(!F.brand||i.brand===F.brand)&&(!F.type||i.category===F.type))||null;}
@@ -1269,11 +1259,54 @@ function clearChip(sz,el){
   const b=el.querySelector('.cbadge'),c=el.querySelector('.cclr');b.textContent='';b.classList.remove('on');c.classList.remove('on');updateAddBtn();
 }
 
+// Button-text priority: widest to shortest. fitAddBtnText picks the first that fits the
+// space left after Aisle + In Stock have taken their natural widths in the bottom bar.
+const ADDBTN_TEXTS=['Add to Pick List','Add to List','+ Add','Add','+'];
+
+function fitAddBtnText(){
+  const btn=document.getElementById('add-btn');if(!btn)return;
+  const zone=document.getElementById('add-btn-zone');
+  if(!zone||!zone.classList.contains('on')){btn.textContent=ADDBTN_TEXTS[0];return;}
+  const cs=getComputedStyle(btn);
+  const padL=parseFloat(cs.paddingLeft)||0,padR=parseFloat(cs.paddingRight)||0;
+  const avail=btn.clientWidth-padL-padR;
+  if(avail<=0){btn.textContent=ADDBTN_TEXTS[ADDBTN_TEXTS.length-1];return;}
+  const probe=document.createElement('span');
+  probe.style.cssText=`position:absolute;visibility:hidden;white-space:nowrap;font-family:${cs.fontFamily};font-size:${cs.fontSize};font-weight:${cs.fontWeight};letter-spacing:${cs.letterSpacing};text-transform:${cs.textTransform}`;
+  document.body.appendChild(probe);
+  let chosen=ADDBTN_TEXTS[ADDBTN_TEXTS.length-1];
+  for(const t of ADDBTN_TEXTS){probe.textContent=t;if(probe.getBoundingClientRect().width<=avail){chosen=t;break;}}
+  document.body.removeChild(probe);
+  if(btn.textContent!==chosen)btn.textContent=chosen;
+}
+
 function updateAddBtn(){
   const hasItems=Object.values(F.chipCountsByType).some(d=>Object.values(d).some(v=>v>0));
-  document.getElementById('add-btn').disabled=!hasItems;
+  const btn=document.getElementById('add-btn');
+  btn.disabled=!hasItems;
   const zone=document.getElementById('add-btn-zone');
-  if(zone){const onFind=document.getElementById('page-find').classList.contains('active');zone.classList.toggle('on',onFind&&!!getEntry());}
+  if(zone){
+    const onFind=document.getElementById('page-find').classList.contains('active');
+    zone.classList.toggle('on',onFind&&!!getEntry());
+  }
+  requestAnimationFrame(fitAddBtnText);
+}
+
+// Auto-scroll: when brand+type+lot+style all resolve to an entry, smoothly scroll the
+// find page down so the size chips come into view. Tracked by a key so size-type or
+// chip-count re-renders don't re-trigger the scroll on every click.
+let _lastCompleteSelKey='';
+function maybeScrollToSizes(){
+  const entry=getEntry();
+  if(!entry){_lastCompleteSelKey='';return;}
+  const onFind=document.getElementById('page-find').classList.contains('active');
+  if(!onFind)return;
+  const key=`${F.brand}|${F.type}|${F.lot}|${F.style}`;
+  if(key===_lastCompleteSelKey)return;
+  _lastCompleteSelKey=key;
+  const scroller=document.getElementById('page-scroll');if(!scroller)return;
+  // Wait one frame for the size chips to render so scrollHeight reflects the full page.
+  requestAnimationFrame(()=>{scroller.scrollTo({top:scroller.scrollHeight,behavior:'smooth'});});
 }
 
 function getSizeMapForType(entry,type){
@@ -1654,6 +1687,7 @@ function init(){
     balanceChipRow(document.getElementById('cr-type'));
     balanceChipRow(document.getElementById('cr-sizetype'));
     fitLotColumn();
+    fitAddBtnText();  // re-pick button text based on new available width
   },120);});
   renderFindPage();renderReviewNav();updateNavPill();
 }
