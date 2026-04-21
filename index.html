@@ -386,7 +386,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
       <path class="go-chk" d="M14 27l9 9 15-16" pathLength="1"/>
     </svg>
   </div>
-  <div id="go-title">Mission Complete</div>
+  <div id="go-title">Order Complete</div>
   <div id="go-stars">
     <span class="go-star">★</span>
     <span class="go-star">★</span>
@@ -1386,7 +1386,7 @@ function launchConfetti(){
 }
 
 function showGamificationAnimation(itemCount){
-  const TOTAL=2800; // total display time in ms
+  const TOTAL=2300; // total display time in ms
   const bd=document.getElementById('go-backdrop');
   const card=document.getElementById('go-card');
   const stat=document.getElementById('go-stat');
@@ -1404,7 +1404,9 @@ function showGamificationAnimation(itemCount){
   newBar.style.animationTimingFunction='linear';
   newBar.style.animationFillMode='forwards';
   newBar.style.animationName='barDrain';
-  // Show
+  // Switch to Find immediately so it's ready under the overlay
+  showPage('find');
+  // Show overlay on top
   bd.classList.add('show');
   card.classList.remove('hide');
   card.classList.add('show');
@@ -1412,7 +1414,7 @@ function showGamificationAnimation(itemCount){
   setTimeout(()=>{
     card.classList.remove('show');card.classList.add('hide');
     bd.classList.remove('show');
-    setTimeout(()=>{card.classList.remove('hide');showPage('find');},300);
+    setTimeout(()=>{card.classList.remove('hide');},300);
   },TOTAL);
 }
 
