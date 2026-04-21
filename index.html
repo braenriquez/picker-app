@@ -140,7 +140,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .psz{font-size:.88rem;font-weight:700;color:var(--text)}
 .ocount{font-size:.8rem;font-weight:700;color:var(--muted);background:var(--s2);border:1.5px dashed var(--border);border-radius:5px;min-width:28px;height:25px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .ocount.hc{background:#1e3010;border:1.5px solid #5a8a2a;color:#9dcc4a}
-.qbadge{background:var(--green);border:1px solid var(--greent);border-radius:5px;color:var(--greent);font-weight:700;font-size:.78rem;padding:3px 7px;text-align:center}
+.qbadge{background:var(--green);border:1px solid var(--greent);border-radius:5px;color:var(--greent);font-weight:700;font-size:.78rem;padding:3px 7px;text-align:center;min-width:var(--qty-badge-w,auto)}
 .rbtn{background:transparent;border:1px solid #1a4a1a;border-radius:5px;color:#4a8a4a;font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0 8px;white-space:nowrap}
 .rbtn:hover{background:var(--green);border-color:var(--greent);color:var(--greent)}
 .pcols{display:grid;grid-template-columns:56px var(--type-col-w,32px) 48px 1fr 58px 62px;gap:10px;padding:0 13px 7px 36px;margin-bottom:4px;border-bottom:1px solid var(--border)}
@@ -1190,6 +1190,19 @@ function onAddToList(){
 // ── Pick list ──
 const TL={regular:'R',short:'S',long:'L','—':'—'};
 
+function updateQtyBadgeWidth(){
+  if(!pickList.length)return;
+  // Measure every unique qty value; DM Sans is proportional so we can't just use the largest number.
+  const qtys=[...new Set(pickList.map(p=>p.qty))];
+  const probe=document.createElement('span');
+  probe.style.cssText="position:absolute;visibility:hidden;white-space:nowrap;font-size:.78rem;font-weight:700;font-family:'DM Sans',sans-serif;padding:3px 7px";
+  document.body.appendChild(probe);
+  let maxW=0;
+  qtys.forEach(q=>{probe.textContent=String(q);maxW=Math.max(maxW,probe.getBoundingClientRect().width);});
+  document.body.removeChild(probe);
+  document.documentElement.style.setProperty('--qty-badge-w',Math.ceil(maxW)+'px');
+}
+
 function updateTypeColWidth(){
   // Collect every type label that will appear in the list (including the column header).
   const labels=['Type',...new Set(pickList.map(p=>TL[p.sizeType]||p.sizeType))];
@@ -1239,6 +1252,7 @@ function renderPickList(){
   });
   body.innerHTML=html;
   updateTypeColWidth();
+  updateQtyBadgeWidth();
 }
 
 function removeItem(id){pickList=pickList.filter(p=>p.id!==id);save(SK.picklist,pickList);updateNavPill();renderPickList();}
