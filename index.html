@@ -27,8 +27,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
 .hdr .brand{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;flex-shrink:0;padding:0 2px;min-width:0}
 .hdr h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(.95rem,3.6vw,1.2rem);letter-spacing:2px;color:var(--accent);line-height:1;white-space:nowrap}
 .hdr .sub{font-size:clamp(.5rem,1.8vw,.6rem);color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;line-height:1;margin-top:3px;white-space:nowrap}
-.hbadge{align-self:center;background:var(--accent);color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:1px;padding:3px 8px;border-radius:20px;display:none;flex-shrink:0}
-.hbadge.on{display:block}
 .hnav{flex:1 1 0;display:flex;align-items:stretch;justify-content:stretch;gap:2px;min-width:0;position:relative}
 .nb{flex:1 1 0;min-width:0;padding:4px 4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.55rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;transition:color .15s;position:relative;white-space:nowrap}
 .nb svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -303,7 +301,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
     </button>
     <span class="nav-indicator" id="nav-indicator"></span>
   </nav>
-  <div class="hbadge" id="hbadge"></div>
 </header>
 
 <div id="page-scroll">
@@ -1083,11 +1080,8 @@ function setActivePage(which){
   document.querySelectorAll('#page-scroll > .page').forEach(p=>p.classList.remove('active'));
   const navEl=document.getElementById('nav-'+which);if(navEl)navEl.classList.add('active');
   const pageEl=document.getElementById('page-'+which);if(pageEl)pageEl.classList.add('active');
-  // Bar stays "on" as long as there's a Find-page selection — the sync loop translates
-  // it off-screen for non-Find slots, so it travels *with* the find page during swipes
-  // instead of vanishing the moment we leave.
   const zone=document.getElementById('add-btn-zone');
-  if(zone)zone.classList.toggle('on',!!getEntry());
+  if(zone)zone.classList.toggle('on',which==='find'&&!!getEntry());
   // Reset the complete-selection key when leaving Find so returning re-plays the reveal.
   if(which!=='find')_lastCompleteSelKey='';
   else if(typeof renderFindPage==='function')renderFindPage();
@@ -1154,11 +1148,19 @@ function updateNavSync(){
   // lane. Pure visual; page renders still fire from the settle handler below.
   const near=Math.round(progress);
   buttons.forEach((b,i)=>b.classList.toggle('active',i===near));
-  // Slide the bottom bar in lockstep with the scroller. scrollLeft=0 is Find (natural
-  // position); any other slot translates it left by the scroll amount, carrying it
-  // off-screen with the find page.
+  // Slide the bottom bar with the scroller. Only display:flex while Find is at least
+  // partially in view (scrollLeft < clientWidth) — once fully past Find the bar is
+  // removed from layout so it can't blank-out the content below other pages.
   const zone=document.getElementById('add-btn-zone');
-  if(zone)zone.style.transform=`translate3d(${-scroller.scrollLeft}px,0,0)`;
+  if(zone&&getEntry()){
+    if(scroller.scrollLeft<w){
+      zone.classList.add('on');
+      zone.style.transform=`translate3d(${-scroller.scrollLeft}px,0,0)`;
+    }else{
+      zone.classList.remove('on');
+      zone.style.transform='';
+    }
+  }
 }
 
 function initSwipeNav(){
@@ -1655,7 +1657,6 @@ function clearPickList(){_sessionPicks=0;pickList=[];save(SK.picklist,pickList);
 function updateNavPill(){
   const n=pickList.length;
   document.getElementById('npill').textContent=n;document.getElementById('npill').classList.toggle('on',n>0);
-  const hb=document.getElementById('hbadge');hb.textContent=n>0?`${n} in list`:'';hb.classList.toggle('on',n>0);
 }
 
 // ── Review ──
