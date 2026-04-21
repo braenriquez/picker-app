@@ -1209,7 +1209,9 @@ function renderPickList(){
   const sorted=[...pickList].sort((a,b)=>{
     const[ta,na,sa]=aisleSortKey(a.aisle),[tb,nb,sb]=aisleSortKey(b.aisle);
     if(ta!==tb)return ta-tb;if(na!==nb)return na-nb;if(sa!==sb)return sa<sb?-1:1;
-    return a.lot<b.lot?-1:a.lot>b.lot?1:0;
+    if(a.lot!==b.lot)return a.lot<b.lot?-1:1;
+    if(a.sizeType!==b.sizeType)return a.sizeType.localeCompare(b.sizeType);
+    return sizeKeyCmp(a.size,b.size);
   });
   const byAisle={},aisleOrder=[];
   sorted.forEach(item=>{const k=item.aisle!=null?String(item.aisle):'Unknown';if(!byAisle[k]){byAisle[k]=[];aisleOrder.push(k);}byAisle[k].push(item);});
