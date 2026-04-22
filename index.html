@@ -1549,7 +1549,7 @@ function renderPickList(){
     const[ta,na,sa]=aisleSortKey(a.aisle),[tb,nb,sb]=aisleSortKey(b.aisle);
     if(ta!==tb)return ta-tb;if(na!==nb)return na-nb;if(sa!==sb)return sa<sb?-1:1;
     if(a.lot!==b.lot)return a.lot<b.lot?-1:1;
-    if(a.sizeType!==b.sizeType)return a.sizeType.localeCompare(b.sizeType);
+    if(a.sizeType!==b.sizeType){const ST={regular:0,short:1,long:2};return(ST[a.sizeType]??9)-(ST[b.sizeType]??9);}
     return sizeKeyCmp(a.size,b.size);
   });
   const byAisle={},aisleOrder=[];
