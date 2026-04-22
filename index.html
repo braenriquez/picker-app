@@ -849,6 +849,7 @@ function parseMantoniSuits(raw){
   const secR=raw[4]||[],shortSubHdr=raw[5]||[],hdr=raw[6]||[];
   let shortS=19,longS=35,aisleC=50,shipC=52;
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  longS++; // "LONG" label in row 4 is one column left of size 38 in row 6
   const ttlC=findTTLCol(hdr);
   const items=[];
   for(let i=7;i<raw.length;i++){
