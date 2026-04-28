@@ -93,9 +93,9 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .az-val{color:var(--accent);font-weight:700;font-size:1rem;letter-spacing:.4px;line-height:1.15;white-space:nowrap}
 /* Single-line color/style tag shown in-flow within the Find page, just above size-type chips.
    Hidden entirely when the selected entry has no meaningful color/fabric descriptor. */
-.sgrid{display:flex;flex-wrap:wrap;gap:9px;min-height:50px;margin-bottom:20px;align-items:flex-start;align-content:flex-start}
-.sempty{font-size:.8rem;color:var(--muted);font-style:italic;padding:8px 0}
-.szchip{position:relative;background:var(--green);border:1.5px solid var(--greent);border-radius:8px;color:var(--greent);font-weight:700;cursor:pointer;user-select:none;transition:background .12s,border-color .12s;width:var(--szchip-w,52px);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 9px 7px;gap:2px;margin-top:8px;margin-left:8px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,var(--szchip-w,52px));gap:9px;min-height:50px;margin-bottom:20px;justify-content:center;align-content:flex-start}
+.sempty{font-size:.8rem;color:var(--muted);font-style:italic;padding:8px 0;grid-column:1/-1;text-align:center}
+.szchip{position:relative;background:var(--green);border:1.5px solid var(--greent);border-radius:8px;color:var(--greent);font-weight:700;cursor:pointer;user-select:none;transition:background .12s,border-color .12s;width:var(--szchip-w,52px);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 9px 7px;gap:2px;margin-top:8px}
 .szchip:active{transform:scale(.9)}
 .szchip.counted{background:var(--accentbg);border-color:var(--accent2);color:var(--accent)}
 .csz{font-size:1rem;font-weight:700;line-height:1}
@@ -741,6 +741,7 @@ function parseCarloSuits(raw){
   const secR=raw[3]||[],hdr=raw[4]||[];
   let shortS=19,longS=27,aisleC=43,shipC=45;
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  longS-=2; // "LONG" label sits 2 columns right of the first long size (36L)
   return buildStandardSuits(raw,5,hdr,shortS,longS,aisleC,shipC,'Carlo Lusso');
 }
 
@@ -790,6 +791,7 @@ function parseGiorgioSuits(raw){
   let shortS=24,longS=41,aisleC=61,shipC=63;
   const ttlC=findTTLCol(suitHdr);
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  longS--; // "LONG" label sits 1 column right of the first long size (34L)
   const items=[];
   for(let i=7;i<raw.length;i++){
     const row=raw[i];if(!row)continue;
@@ -911,6 +913,7 @@ function parseJacketsAllBrands(raw){
   const secR=raw[4]||[],letterHdr=raw[5]||[],chestHdr=raw[6]||[],hdr=raw[7]||[];
   let shortS=17,longS=27,aisleC=40,shipC=41;
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
+  longS--; // "LONG" label sits 1 column right of the first long size (36L)
   const ttlC=findTTLCol(hdr);
   const brandMap={'MANTONI JACKETS:':'Mantoni','BERTOLINI JACKETS:':'Bertolini','ENZO JACKETS:':'Enzo'};
   let currentBrand='Mantoni';
@@ -960,6 +963,7 @@ function parseJacketsAllBrands(raw){
 
 function parseShirts(raw){
   const neckHdr=raw[7]||[];
+  const boysHdr=raw[6]||[];
   const aisleC=38,shipC=39;
   const ttlC=findTTLCol(neckHdr);
   const sleeveSec=raw[4]||[];
@@ -1015,6 +1019,23 @@ function parseShirts(raw){
     const flag=String(row[1]||'').trim()||null;
     const model=String(row[2]||'').trim();if(isSkip(model))continue;
     const aisle=normalizeAisle(row[aisleC]);
+    // Boys shirts use the boys size header (row 6: 2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
+    // instead of the adult sleeve/neck header. Detected by model name.
+    if(/^BOYS[_\-]/i.test(model)){
+      const sz={};
+      for(let c=3;c<=15;c++){
+        const lbl=boysHdr[c],val=row[c];
+        if(lbl!=null&&String(lbl).trim()&&val&&typeof val==='number'&&val>0){
+          const k=String(lbl).trim();
+          sz[k]=(sz[k]||0)+safeInt(val);
+        }
+      }
+      if(!Object.keys(sz).length)continue;
+      const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
+      items.push({lot,flag:flag==='None'?null:flag,model,brand:currentBrand,category:'Shirt',
+        aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:'boys_numeric',sizes:sz});
+      continue;
+    }
     const sizes={};const sizeMeta={};
     for(let c=3;c<=35;c++){
       const hdrVal=currentHdr[c];if(hdrVal==null||String(hdrVal).trim()==='')continue;
@@ -1048,13 +1069,16 @@ function parseJeans(raw){
   for(let i=4;i<raw.length;i++){
     const row=raw[i];if(!row)continue;
     const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
-    const styleVal=String(row[3]||'').trim();if((styleVal&&isSkip(styleVal))||isSkip(lot))continue;
-    if(styleVal&&styleVal.length>3)continue; // skip "will arrive" rows where col3 has notice text
+    const styleVal=String(row[3]||'').trim();
+    if((styleVal&&isSkip(styleVal))||isSkip(lot))continue;
     const model='Jeans';
     const aisleRaw=normalizeAisle(row[aisleC]);
     const aisle=aisleRaw!=null?`Jeans - ${aisleRaw}`:null;
     const sizes={};
-    for(let c=4;c<=15;c++){const sz=hdr[c];const val=row[c];if(sz!=null&&val&&typeof val==='number'&&val>0)sizes[String(sz)]=safeInt(val);}
+    for(let c=4;c<=15;c++){
+      const sz=hdr[c],val=row[c];
+      if(sz!=null&&val&&typeof val==='number'&&val>0)sizes[String(sz)]=safeInt(val);
+    }
     if(!Object.keys(sizes).length)continue;
     const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
     items.push({lot,flag:String(row[1]||'').trim()||null,model,brand:'Enzo',category:'Jeans',aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:'jeans',sizes});
@@ -1263,7 +1287,17 @@ function renderFindPage(){
   const tcr=document.getElementById('cr-type');tcr.innerHTML='';
   types.forEach(t=>{
     const b=document.createElement('button');b.className='cb'+(F.type===t?' active':'');b.textContent=t;
-    b.onclick=()=>{if(F.type===t)return;F.type=t;F.lot='';F.style='';F.sizeType='';F.chipCountsByType={};renderFindPage();};
+    b.onclick=()=>{
+      if(F.type===t)return;
+      F.type=t;
+      // Carry the lot over when the same lot exists under the new type — pickers often
+      // walk Suit → Pants → Vest within one lot. Style/sizeType/counts always reset
+      // because they're per-entry and can't be honored across types.
+      const carryLot=F.lot&&inventory.some(i=>i.brand===F.brand&&i.category===t&&i.lot===F.lot);
+      if(!carryLot)F.lot='';
+      F.style='';F.sizeType='';F.chipCountsByType={};
+      renderFindPage();
+    };
     tcr.appendChild(b);
   });
 
@@ -1339,7 +1373,10 @@ function renderFindPage(){
         if(!sleeveGroups[sleeve])sleeveGroups[sleeve]={};
         sleeveGroups[sleeve][neck]=(sleeveGroups[sleeve][neck]||0)+qty;
       });
+      // Sort ascending, then swap the first two so the lead sleeve group (e.g. 34-35)
+      // matches the order on the printed pick sheets.
       const sleeves=Object.keys(sleeveGroups).sort((a,b)=>{const na=parseFloat(a),nb=parseFloat(b);return isNaN(na)||isNaN(nb)?a.localeCompare(b):na-nb;});
+      if(sleeves.length>=2)[sleeves[0],sleeves[1]]=[sleeves[1],sleeves[0]];
       sleeves.forEach(sl=>{
         const b=document.createElement('button');b.className='cb'+(F.sizeType===sl?' active':'');b.textContent=sl;b.dataset.type=sl;
         b.onclick=()=>_setSzType(sl);
