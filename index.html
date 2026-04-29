@@ -1331,7 +1331,10 @@ function renderFindPage(){
   ss.disabled=!F.lot;
   styles.forEach(item=>{const o=document.createElement('option');o.value=item.model;o.textContent=item.model+(item.flag?` [${item.flag}]`:'');ss.appendChild(o);});
   if(!styles.some(i=>i.model===F.style))F.style='';
-  if(!F.style&&styles.length>0){F.style=styles[0].model;}
+  if(!F.style&&styles.length>0){
+    const nopMatch=F.type==='Pants'&&styles.find(i=>/^NoP-Pants?$/i.test(i.model));
+    F.style=(nopMatch||styles[0]).model;
+  }
   ss.value=F.style;
 
   // Entry-driven UI: Aisle/In-Stock live in the bottom action bar (see .add-btn-zone).
@@ -1436,8 +1439,8 @@ function updateSzChipWidth(){
   if(!chips.length)return;
   let maxW=52;
   chips.forEach(c=>{
-    // Temporarily unset width so the chip reflows to its natural content size.
-    const prev=c.style.width;c.style.width='auto';
+    // max-content lets the chip size to its text regardless of grid column constraints.
+    const prev=c.style.width;c.style.width='max-content';
     maxW=Math.max(maxW,c.getBoundingClientRect().width);
     c.style.width=prev;
   });
