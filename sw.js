@@ -1,11 +1,12 @@
-const CACHE = 'gb-v1';
+const CACHE = 'gb-v2';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json',
   './icon.svg',
   './icon-192.png',
   './icon-512.png',
+  // manifest.json intentionally excluded — must be fetched fresh so theme_color
+  // and other install-time metadata always reflect the latest deployed version
 ];
 
 self.addEventListener('install', e => {
