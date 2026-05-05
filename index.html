@@ -180,9 +180,13 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .anum{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--accent);letter-spacing:1px;line-height:1}
 .acnt{margin-left:auto;font-size:.64rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px;border:1px solid var(--border)}
 .lsg{border-bottom:1px solid var(--border)}.lsg:last-child{border-bottom:none}
-.lsh{display:flex;align-items:center;gap:7px;padding:6px 13px 6px 24px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(46,46,46,.5)}
+.lsh{display:flex;align-items:center;gap:7px;padding:6px 13px 6px 24px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(46,46,46,.5);cursor:pointer;transition:background .12s;-webkit-tap-highlight-color:transparent;outline:none}
+.lsh:hover{background:rgba(200,169,110,.05)}
+.lsh:active,.lsh:focus-visible{background:rgba(200,169,110,.10)}
+.lsh:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
 .lshlot{font-size:.8rem;font-weight:700;color:var(--text)}
 .lshmod{font-size:.72rem;color:var(--muted)}
+.lshchev{margin-left:auto;font-size:1rem;color:var(--muted);line-height:1;font-weight:400}
 /* Pick list column order: Ordered | Type | Size | (spacer) | In Stock | Picked button.
    - Type and Size stay as two distinct cells but are visually close together (negative
      left-margin on Size).
@@ -452,13 +456,17 @@ let unclassified=load(SK.unclassified,[]);
 let memory=load(SK.memory,{});
 let pickList=load(SK.picklist,[]);
 let importedFiles=load(SK.files,[]);
-const F={brand:'',type:'',lot:'',style:'',sizeType:'',chipCountsByType:{}};
+const F={brand:'',type:'',lot:'',style:'',sizeType:'',chipCountsByType:{},_editSeed:new Set()};
 function ctForType(t){return F.chipCountsByType[t]||(F.chipCountsByType[t]={});}
+// Clears chip counts AND the picklist-edit seed in one shot. Every reset site (brand/type
+// click, lot/style dropdown change, sizeSystem fallback, post-save reset) calls this so
+// the implicit "edit mode" stays path-determined: only editFromPicklist re-populates it.
+function clearChipsAndSeed(){F.chipCountsByType={};F._editSeed=new Set();}
 
 // ── Find-page state persistence ──────────────────────────────────────────────
 // Saves the current Find selections so they survive a page reload / PWA relaunch.
 function saveFindState(){
-  save(SK.findState,{brand:F.brand,type:F.type,lot:F.lot,style:F.style,sizeType:F.sizeType,chipCountsByType:F.chipCountsByType});
+  save(SK.findState,{brand:F.brand,type:F.type,lot:F.lot,style:F.style,sizeType:F.sizeType,chipCountsByType:F.chipCountsByType,_editSeed:[...F._editSeed]});
 }
 // Restores saved state, validating each field against the current inventory so
 // a stale or removed lot/style doesn't leave the UI in a broken state.
@@ -483,6 +491,7 @@ function restoreFindState(){
   // Full selection is valid — restore size type and chip counts.
   F.sizeType=s.sizeType||'';
   F.chipCountsByType=s.chipCountsByType||{};
+  F._editSeed=new Set(s._editSeed||[]);
 }
 
 function classifyModel(m){
@@ -1283,7 +1292,7 @@ function renderFindPage(){
       F.brand=br;
       const avail=[...new Set(inventory.filter(i=>i.brand===br).map(i=>i.category))].filter(c=>CATEGORIES.includes(c)).sort((a,b)=>CATEGORIES.indexOf(a)-CATEGORIES.indexOf(b));
       if(!avail.includes(F.type))F.type=avail[0]||'';
-      F.lot='';F.style='';F.sizeType='';F.chipCountsByType={};
+      F.lot='';F.style='';F.sizeType='';clearChipsAndSeed();
       renderFindPage();
     };
     bcr.appendChild(b);
@@ -1302,7 +1311,7 @@ function renderFindPage(){
       // because they're per-entry and can't be honored across types.
       const carryLot=F.lot&&inventory.some(i=>i.brand===F.brand&&i.category===t&&i.lot===F.lot);
       if(!carryLot)F.lot='';
-      F.style='';F.sizeType='';F.chipCountsByType={};
+      F.style='';F.sizeType='';clearChipsAndSeed();
       renderFindPage();
     };
     tcr.appendChild(b);
@@ -1395,7 +1404,7 @@ function renderFindPage(){
       if(!sleeves.includes(F.sizeType)){F.sizeType=sleeves[0]||'';const first=stcr.querySelector('.cb');if(first)first.classList.add('active');}
     }else{
       const b=document.createElement('button');b.className='cb active';b.textContent='All Sizes';b.dataset.type='single';stcr.appendChild(b);
-      if(F.sizeType!=='single'){F.sizeType='single';F.chipCountsByType={};}
+      if(F.sizeType!=='single'){F.sizeType='single';clearChipsAndSeed();}
     }
   }
   document.getElementById('sz-hint').style.display=entry&&F.sizeType?'block':'none';
@@ -1531,7 +1540,7 @@ function getSizeMapForType(entry,type){
 }
 function onAddToList(){
   const entry=getEntry();if(!entry)return;
-  let added=0,updated=0;
+  let added=0,updated=0,removed=0;
   Object.entries(F.chipCountsByType).forEach(([type,counts])=>{
     const sizeMap=getSizeMapForType(entry,type);
     const stLabel=type==='single'?'—':type;
@@ -1543,8 +1552,24 @@ function onAddToList(){
       else{pickList.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),lot:F.lot,flag:entry.flag,model:F.style,brand:entry.brand,category:entry.category,sizeType:stLabel,size:sz,qty:stock,aisle:entry.aisle,ordered:count});added++;}
     });
   });
-  F.chipCountsByType={};save(SK.picklist,pickList);renderSizeChips();updateAddBtn();updateNavPill();
-  const parts=[];if(added)parts.push(`${added} item${added>1?'s':''} added`);if(updated)parts.push(`${updated} updated`);
+  // Picklist-edit deletion sweep: any chip combo that was pre-populated by editFromPicklist
+  // but is now absent from chipCountsByType (X-button cleared it OR its bucket got wiped
+  // by a sizeType switch) OR has count===0 means the picker chose to remove that row.
+  // The sweep fires only when F._editSeed has entries — fresh-chip flow is unaffected.
+  if(F._editSeed&&F._editSeed.size){
+    F._editSeed.forEach(seedKey=>{
+      const colonIdx=seedKey.indexOf(':');
+      const bucket=seedKey.slice(0,colonIdx),size=seedKey.slice(colonIdx+1);
+      const bucketMap=F.chipCountsByType[bucket];
+      const stillPresent=bucketMap&&bucketMap[size]>0;
+      if(stillPresent)return;
+      const stLabel=bucket==='single'?'—':bucket;
+      const idx=pickList.findIndex(p=>p.lot===F.lot&&p.model===F.style&&p.sizeType===stLabel&&p.size===size);
+      if(idx>=0){pickList.splice(idx,1);removed++;}
+    });
+  }
+  clearChipsAndSeed();save(SK.picklist,pickList);renderSizeChips();updateAddBtn();updateNavPill();
+  const parts=[];if(added)parts.push(`${added} item${added>1?'s':''} added`);if(updated)parts.push(`${updated} updated`);if(removed)parts.push(`${removed} removed`);
   showToast(parts.join(', ')||'Done');
 }
 
@@ -1612,7 +1637,7 @@ function renderPickList(){
     lotOrder.forEach(key=>{
       const items=byLot[key],rep=items[0];
       const fh=rep.flag?`<span class="fbadge f${rep.flag}">${rep.flag}</span>`:'';
-      html+=`<div class="lsg"><div class="lsh">${fh}<span class="lshlot">${rep.lot}</span><span class="lshmod">— ${rep.model}</span></div>`;
+      html+=`<div class="lsg"><div class="lsh" role="button" tabindex="0" data-lot="${rep.lot.replace(/"/g,'&quot;')}" data-model="${rep.model.replace(/"/g,'&quot;')}" aria-label="Edit ${rep.lot.replace(/"/g,'&quot;')} ${rep.model.replace(/"/g,'&quot;')}">${fh}<span class="lshlot">${rep.lot}</span><span class="lshmod">— ${rep.model}</span><span class="lshchev" aria-hidden="true">›</span></div>`;
       items.forEach(item=>{
         const oc=item.ordered>0?'ocount hc':'ocount',ol=item.ordered>0?item.ordered:'—';
         const tl=TL[item.sizeType]||item.sizeType;
@@ -1624,6 +1649,13 @@ function renderPickList(){
     html+=`</div>`;
   });
   body.innerHTML=html;
+  // Wire tap-to-edit on every .lsh lot header. Delegated per-element rather than via
+  // event-delegation on body so the role="button" / keyboard handler stays scoped.
+  body.querySelectorAll('.lsh[data-lot]').forEach(el=>{
+    const fire=()=>editFromPicklist(el.dataset.lot,el.dataset.model);
+    el.onclick=fire;
+    el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fire();}};
+  });
   updateTypeColWidth();
   updateOrderedBadgeWidth();
   updateQtyBadgeWidth();
@@ -1724,6 +1756,44 @@ function showCompleteAnimation(){
     el.classList.add('hide');
     setTimeout(()=>{el.classList.remove('hide');showPage('find');},350);
   },2400);
+}
+
+// Tap-to-edit: navigate from a picklist .lsh row to Find with brand/type/lot/style
+// auto-loaded and chips pre-filled from existing pickList rows for that lot+model.
+// Adjusting and saving upserts; clearing a pre-populated chip removes that row.
+function editFromPicklist(lot,model){
+  // Wipe any stale state from a prior picklist tap that wasn't saved. Without this,
+  // tapping lot A then lot B without saving A leaves A's seed entries, and saving B
+  // could phantom-delete A's rows.
+  clearChipsAndSeed();
+  // Reset the auto-scroll dedup key so the explicit scrollToSizes() below doesn't
+  // race with maybeScrollToSizes() when re-tapping the same lot.
+  _lastCompleteSelKey='';
+  // Locate the inventory entry to get brand+category. Guard against a row that
+  // survived an inventory reimport that dropped the lot.
+  const entry=inventory.find(i=>i.lot===lot&&i.model===model);
+  if(!entry){showToast('Lot no longer in inventory','#a44');return;}
+  F.brand=entry.brand;F.type=entry.category;F.lot=lot;F.style=model;
+  // Walk pickList for matching rows. Reverse-map row.sizeType → bucket key
+  // ('—' → 'single', everything else passes through).
+  const seededBuckets=[];
+  pickList.filter(p=>p.lot===lot&&p.model===model).forEach(p=>{
+    const bucketKey=p.sizeType==='—'?'single':p.sizeType;
+    if(!F.chipCountsByType[bucketKey])F.chipCountsByType[bucketKey]={};
+    F.chipCountsByType[bucketKey][p.size]=p.ordered;
+    F._editSeed.add(`${bucketKey}:${p.size}`);
+    if(!seededBuckets.includes(bucketKey))seededBuckets.push(bucketKey);
+  });
+  // Pick a seeded bucket — prefer regular/single if present, else first seeded.
+  // Without this, multi-bucket pickList rows would render only the default bucket
+  // on arrival and the picker sees partial pre-filled chips.
+  if(seededBuckets.length){
+    F.sizeType=seededBuckets.includes('regular')?'regular':seededBuckets.includes('single')?'single':seededBuckets[0];
+  }
+  saveFindState();
+  showPage('find');
+  renderFindPage();
+  scrollToSizes();
 }
 
 function removeItem(id){
@@ -1892,8 +1962,8 @@ function overrideAuto(sel){
 function showToast(msg,bg){const t=document.getElementById('toast');t.textContent=msg;t.style.background=bg||'var(--accent)';t.classList.add('on');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('on'),2400);}
 
 function init(){
-  document.getElementById('sel-lot').addEventListener('change',e=>{F.lot=e.target.value;F.style='';F.sizeType='';F.chipCountsByType={};renderFindPage();});
-  document.getElementById('sel-style').addEventListener('change',e=>{F.style=e.target.value;F.sizeType='';F.chipCountsByType={};renderFindPage();});
+  document.getElementById('sel-lot').addEventListener('change',e=>{F.lot=e.target.value;F.style='';F.sizeType='';clearChipsAndSeed();renderFindPage();});
+  document.getElementById('sel-style').addEventListener('change',e=>{F.style=e.target.value;F.sizeType='';clearChipsAndSeed();renderFindPage();});
   document.getElementById('add-btn').addEventListener('click',onAddToList);
   document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
   document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
