@@ -122,7 +122,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .addbtn:hover{background:var(--accent2)}
 .addbtn:active{transform:scale(.98)}
 .addbtn:disabled{opacity:.28;cursor:not-allowed;transform:none}
-.add-btn-zone{flex-shrink:0;padding:8px 14px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:10px;will-change:transform}
+.add-btn-zone{position:relative;flex-shrink:0;padding:8px 14px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:10px;will-change:transform}
 .add-btn-zone.on{display:flex}
 .fbadge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:.67rem;font-weight:700;flex-shrink:0}
 .fC{background:var(--bluebg);color:var(--bluet)}.fP{background:var(--greenbg);color:var(--greenbt)}
@@ -272,8 +272,65 @@ select:disabled{opacity:.3;cursor:not-allowed}
 #no-inv .ni-icon{font-size:2rem;opacity:.2;margin-bottom:10px}
 #no-inv p{font-size:.82rem;color:var(--muted);line-height:1.6}
 .sz-hint{font-size:.6rem;color:var(--muted);font-style:italic;margin-bottom:9px;display:none}
+/* ── Order tagging (multi-order pick list) ─────────────────────────────────── */
+/* Eight color slots cycled per distinct order label. Color is the only
+   differentiator — shown as a left-edge stripe on tagged pick-list rows and as
+   a colored left border on legend chips, picker rows, and lot section tags. */
+.prow{position:relative}
+.prow.has-order::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--row-edge,transparent);pointer-events:none}
+.prow.o1{--row-edge:#5b8def}.prow.o2{--row-edge:#f0a830}.prow.o3{--row-edge:#6dca6d}.prow.o4{--row-edge:#e85a5a}
+.prow.o5{--row-edge:#b078e8}.prow.o6{--row-edge:#4dc7d0}.prow.o7{--row-edge:#f06a3a}.prow.o8{--row-edge:#e87fb4}
+/* Order palette — used for left-edge color borders on chips/rows/tags. */
+.has-ocolor.o1{--ocolor:#5b8def}.has-ocolor.o2{--ocolor:#f0a830}.has-ocolor.o3{--ocolor:#6dca6d}.has-ocolor.o4{--ocolor:#e85a5a}
+.has-ocolor.o5{--ocolor:#b078e8}.has-ocolor.o6{--ocolor:#4dc7d0}.has-ocolor.o7{--ocolor:#f06a3a}.has-ocolor.o8{--ocolor:#e87fb4}
+/* Lot-section header: small inline tag showing which order this lot block belongs to. */
+.lsh-order{display:inline-flex;align-items:center;background:var(--s3);border-radius:4px;padding:2px 8px;margin-left:auto;margin-right:8px;border-left:3px solid var(--ocolor,var(--border2))}
+.lsh-order .oname{font-size:.62rem;font-weight:700;color:var(--text);letter-spacing:.3px;line-height:1}
+.lsh-order + .lshchev{margin-left:0}
+/* Legend bar at the top of the pick list — quick switcher for active order. */
+.olegend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:8px 11px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center}
+.olegend-lbl{font-size:.55rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:600;margin-right:2px}
+.olegend-chip{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--ocolor,var(--border2));border-radius:4px 14px 14px 4px;padding:4px 10px 4px 8px;cursor:pointer;transition:border-color .12s,background .12s;font-family:'DM Sans',sans-serif}
+.olegend-chip:hover{border-color:var(--accent);border-left-color:var(--ocolor,var(--accent))}
+.olegend-chip.active{border-color:var(--accent);border-left-color:var(--ocolor,var(--accent));background:var(--accentbg)}
+.olegend-chip .oname{font-size:.7rem;font-weight:700;color:var(--text);line-height:1}
+.olegend-chip .ocount-mini{font-size:.58rem;color:var(--muted);font-weight:600;background:var(--bg);border-radius:7px;padding:1px 6px}
+/* Drawer trigger tab — small handle floating just above the action bar. Tap
+   to toggle the order drawer. Stays unobtrusive when no orders exist; once an
+   active order is set, the tab gets a colored left edge to surface it. */
+.order-handle{position:absolute;top:-22px;right:14px;height:23px;padding:0 12px 1px 11px;background:var(--surface);border:1px solid var(--border2);border-bottom:1px solid var(--surface);border-radius:8px 8px 0 0;border-left:3px solid var(--ocolor,var(--border2));font-family:'Bebas Neue',sans-serif;font-size:.72rem;letter-spacing:1.4px;color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:1;z-index:1;transition:color .15s}
+.order-handle:hover{color:var(--accent2)}
+.order-handle .oh-name{color:var(--text);font-family:'DM Sans',sans-serif;font-weight:700;font-size:.74rem;letter-spacing:.2px;text-transform:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-handle .oh-chev{display:inline-block;font-size:.7rem;transition:transform .2s}
+.order-handle.open .oh-chev{transform:rotate(180deg)}
+/* Docked order drawer. Sits as a sibling above .add-btn-zone in the body
+   flex column. When closed, display:none — when open, slides up. Doesn't take
+   a permanent row in the layout; the add button always sits at the bottom. */
+#order-drawer{flex-shrink:0;display:none;flex-direction:column;background:var(--surface);border-top:1px solid var(--border2);border-bottom:1px solid var(--border);box-shadow:0 -6px 18px rgba(0,0,0,.35);max-height:min(50vh,360px);overflow:hidden}
+#order-drawer.on{display:flex;animation:drawerUp .22s cubic-bezier(.32,1.18,.6,1) forwards}
+@keyframes drawerUp{from{transform:translateY(40%);opacity:0}to{transform:translateY(0);opacity:1}}
+.op-hd{padding:11px 14px 8px;display:flex;align-items:center;justify-content:space-between}
+.op-title{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:1.8px;color:var(--accent)}
+.op-sub{font-size:.6rem;color:var(--muted);margin-top:1px;letter-spacing:.4px}
+.op-close{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1;padding:0 6px;font-family:'DM Sans',sans-serif}
+.op-close:hover{color:var(--text)}
+.op-list{padding:2px 10px;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:200px}
+.op-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent;border-left:3px solid var(--ocolor,transparent)}
+.op-row:hover{background:var(--s2)}
+.op-row.active{background:var(--accentbg);border-color:var(--accent);border-left-color:var(--ocolor,var(--accent))}
+.op-row .oname{font-size:.88rem;font-weight:600;color:var(--text);flex:1}
+.op-row .ocount-mini{font-size:.62rem;color:var(--muted);font-weight:600;background:var(--bg);border-radius:8px;padding:2px 7px}
+.op-row.none .oname{color:var(--muted);font-style:italic}
+.op-row .opdel{background:transparent;border:1px solid #3a2020;border-radius:5px;color:#665555;font-size:.85rem;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0;line-height:1;font-family:'DM Sans',sans-serif}
+.op-row .opdel:hover{background:var(--red);border-color:var(--red);color:#fff}
+.op-new{padding:9px 12px 11px;border-top:1px solid var(--border);display:flex;gap:8px}
+.op-new input{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:8px 11px;outline:none;transition:border-color .15s;min-width:0}
+.op-new input:focus{border-color:var(--accent)}
+.op-new button{background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:1.4px;padding:0 16px;cursor:pointer;transition:background .15s;flex-shrink:0}
+.op-new button:hover{background:var(--accent2)}
+.op-new button:disabled{opacity:.4;cursor:not-allowed}
 @media print{
-  .hdr,.tactions,.rbtn,.add-btn-zone,#page-find,#page-review,#page-settings,.page-overlay{display:none!important}
+  .hdr,.tactions,.rbtn,.add-btn-zone,#page-find,#page-review,#page-settings,.page-overlay,#order-drawer,.order-handle{display:none!important}
   #page-scroll{display:block!important;overflow:visible!important}
   #page-list{display:block!important;padding:0;width:auto;max-width:none;flex:none}
   body{background:white;color:black}
@@ -282,6 +339,12 @@ select:disabled{opacity:.3;cursor:not-allowed}
   .anum{color:#333}
   .qbadge{background:#e8f5e8;color:#2a6a2a;border-color:#2a6a2a}
   .ocount.hc{background:#eef8d8;color:#3a6a0a;border-color:#3a6a0a}
+  .prow.has-order::before,.lsh-order,.olegend-chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .lsh-order{background:#eee!important;border-top:1px solid #ccc;border-right:1px solid #ccc;border-bottom:1px solid #ccc}
+  .lsh-order .oname{color:#222}
+  .olegend{background:#fff;border:1px solid #ccc}
+  .olegend-chip{background:#f6f6f6;border-color:#ccc}
+  .olegend-chip .oname{color:#222}
 }
 </style>
 </head>
@@ -395,10 +458,28 @@ select:disabled{opacity:.3;cursor:not-allowed}
 
 <!-- Bottom action bar: Aisle + In Stock (auto-sized, flex:0) and Add button (flex:1).
      The button text adapts down a priority list to whatever fits the leftover space. -->
+<div id="order-drawer" role="region" aria-labelledby="op-title">
+  <div class="op-hd">
+    <div>
+      <div class="op-title" id="op-title">Orders</div>
+      <div class="op-sub" id="op-sub">Tag new picks by order — leave blank to keep one combined list</div>
+    </div>
+    <button class="op-close" type="button" onclick="closeOrderPicker()" aria-label="Close orders drawer">×</button>
+  </div>
+  <div class="op-list" id="op-list"></div>
+  <form class="op-new" id="op-new-form" onsubmit="event.preventDefault();addNewOrder()">
+    <input id="op-new-input" type="text" placeholder="New order label (e.g. 42, Smith)" maxlength="20" autocomplete="off">
+    <button type="submit" id="op-new-btn">Add</button>
+  </form>
+</div>
 <div class="add-btn-zone" id="add-btn-zone">
   <div class="az-info"><div class="az-lbl">Aisle</div><div class="az-val" id="ic-aisle">—</div></div>
   <div class="az-info"><div class="az-lbl" id="ic-ship-lbl">In Stock</div><div class="az-val" id="ic-ship">—</div></div>
   <button class="addbtn" id="add-btn" disabled>Add to Pick List</button>
+  <button class="order-handle" id="order-handle" type="button" onclick="toggleOrderDrawer()" aria-label="Toggle orders drawer" aria-expanded="false">
+    <span class="oh-name" id="oh-name">Orders</span>
+    <span class="oh-chev" aria-hidden="true">▴</span>
+  </button>
 </div>
 <div id="complete-overlay">
   <svg id="complete-check" viewBox="0 0 52 52">
@@ -432,7 +513,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const CATEGORIES=['Suit','Jacket','Vest','Pants','Shirt','Jeans','Boys'];
-const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page'};
+const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles'};
 const DEFAULT_RULES=[
   {p:"will arrive|CANCELLED|cutting#|arrive on|minimum order",c:"__SKIP__"},
   {p:"\\bjean\\b|\\bjeans\\b|shorts",c:"Jeans"},
@@ -456,6 +537,129 @@ let unclassified=load(SK.unclassified,[]);
 let memory=load(SK.memory,{});
 let pickList=load(SK.picklist,[]);
 let importedFiles=load(SK.files,[]);
+// ── Multi-order pick list state ─────────────────────────────────────────────
+// activeOrder: currently selected order label; new picklist items are tagged
+// with this. '' means untagged (no order). Persisted across sessions.
+// orderStyles: label → palette index (0..7). Once a label is assigned an
+// index, it keeps the same color+shape across sessions even if all its items
+// are removed and re-added later. Cycles after 8 distinct labels.
+let activeOrder=load(SK.activeOrder,'');
+let orderStyles=load(SK.orderStyles,{});
+// 8 color slots cycled per distinct order label. Color is the only differentiator;
+// shown as a left-edge stripe on tagged pick-list rows and as a colored left
+// border on legend chips, picker rows, and lot section tags.
+const ORDER_PALETTE_SIZE=8;
+function escapeAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// Returns palette index 1..8 for an order label, assigning a free slot on first
+// call. Untagged ('') returns 0 so callers can short-circuit. Slot is sticky
+// across sessions — re-creating a deleted label reuses the same color.
+function orderStyle(label){
+  if(!label)return 0;
+  if(orderStyles[label]==null){
+    const used=new Set(Object.values(orderStyles));
+    let idx=0;while(idx<ORDER_PALETTE_SIZE&&used.has(idx))idx++;
+    if(idx>=ORDER_PALETTE_SIZE)idx=Object.keys(orderStyles).length%ORDER_PALETTE_SIZE;
+    orderStyles[label]=idx;
+    save(SK.orderStyles,orderStyles);
+  }
+  return orderStyles[label]+1; // 1-indexed for o1..o8 CSS classes
+}
+// CSS class fragment for elements that take a colored left border. Empty when untagged.
+function orderColorClass(label){const i=orderStyle(label);return i?` has-ocolor o${i}`:'';}
+// Walks pickList in current order to collect distinct order labels (first-add order).
+function listOrderLabels(){
+  const seen=[];
+  pickList.forEach(p=>{const l=p.order||'';if(!seen.includes(l))seen.push(l);});
+  return seen;
+}
+// Renders the small drawer trigger above the action bar. Stays as plain
+// "Orders" text until an active order exists; then it shows the order name
+// with a colored left edge so the user can see what they're tagging into.
+function renderOrderHandle(){
+  const handle=document.getElementById('order-handle');if(!handle)return;
+  const name=document.getElementById('oh-name');
+  // Reset color classes (o1..o8) regardless of state.
+  handle.classList.remove('has-ocolor','o1','o2','o3','o4','o5','o6','o7','o8');
+  if(activeOrder){
+    const i=orderStyle(activeOrder);
+    if(i){handle.classList.add('has-ocolor','o'+i);}
+    name.textContent=activeOrder;
+  }else{
+    name.textContent='Orders';
+  }
+}
+function setActiveOrder(label){
+  activeOrder=(label||'').trim();
+  save(SK.activeOrder,activeOrder);
+  renderOrderHandle();
+}
+function toggleOrderDrawer(){
+  const d=document.getElementById('order-drawer');if(!d)return;
+  if(d.classList.contains('on'))closeOrderPicker();else openOrderPicker();
+}
+function openOrderPicker(){
+  renderOrderPickerList();
+  const d=document.getElementById('order-drawer');if(!d)return;
+  d.classList.add('on');
+  const handle=document.getElementById('order-handle');if(handle){handle.classList.add('open');handle.setAttribute('aria-expanded','true');}
+  setTimeout(()=>{const i=document.getElementById('op-new-input');if(i)i.focus();},120);
+}
+function closeOrderPicker(){
+  const d=document.getElementById('order-drawer');if(d)d.classList.remove('on');
+  const handle=document.getElementById('order-handle');if(handle){handle.classList.remove('open');handle.setAttribute('aria-expanded','false');}
+}
+function renderOrderPickerList(){
+  const list=document.getElementById('op-list');if(!list)return;
+  // Tagged labels currently in the picklist; ensure activeOrder is shown even
+  // if it has no items yet (newly created, nothing added).
+  const labels=listOrderLabels().filter(l=>l!=='');
+  if(activeOrder&&!labels.includes(activeOrder))labels.unshift(activeOrder);
+  let html='';
+  // "No order" option first — always present, marks untagged items.
+  html+=`<div class="op-row none ${activeOrder===''?'active':''}" data-order="" role="button" tabindex="0"><span class="oname">No order</span></div>`;
+  labels.forEach(label=>{
+    const count=pickList.filter(p=>(p.order||'')===label).length;
+    const cnt=count?`<span class="ocount-mini">${count}</span>`:'';
+    const isActive=label===activeOrder?'active':'';
+    const safe=escapeAttr(label);
+    html+=`<div class="op-row ${isActive}${orderColorClass(label)}" data-order="${safe}" role="button" tabindex="0"><span class="oname">${safe}</span>${cnt}<button class="opdel" data-order="${safe}" aria-label="Remove order ${safe}" title="Remove this order from the pick list">×</button></div>`;
+  });
+  list.innerHTML=html;
+  list.querySelectorAll('.op-row[data-order]').forEach(el=>{
+    const fire=()=>{setActiveOrder(el.dataset.order);renderOrderPickerList();renderPickList();closeOrderPicker();};
+    el.onclick=fire;
+    el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fire();}};
+  });
+  list.querySelectorAll('.opdel[data-order]').forEach(el=>{
+    el.onclick=e=>{e.stopPropagation();deleteOrder(el.dataset.order);};
+  });
+}
+function addNewOrder(){
+  const inp=document.getElementById('op-new-input');if(!inp)return;
+  const label=(inp.value||'').trim().replace(/^#\s*/,'').slice(0,20);
+  if(!label)return;
+  orderStyle(label); // assign palette slot now so the color shows immediately
+  setActiveOrder(label);
+  inp.value='';
+  renderOrderPickerList();
+  renderPickList();
+  closeOrderPicker();
+}
+function deleteOrder(label){
+  if(!confirm(`Remove order "${label}" and all its items from the pick list?`))return;
+  pickList=pickList.filter(p=>(p.order||'')!==label);
+  save(SK.picklist,pickList);
+  if(activeOrder===label)setActiveOrder('');
+  // Keep the palette assignment so re-creating the same label later reuses
+  // the same color — picker muscle memory stays intact.
+  updateNavPill();
+  renderOrderPickerList();
+  renderPickList();
+}
+function toggleActiveOrder(label){
+  setActiveOrder(activeOrder===label?'':label);
+  renderPickList();
+}
 const F={brand:'',type:'',lot:'',style:'',sizeType:'',chipCountsByType:{},_editSeed:new Set()};
 function ctForType(t){return F.chipCountsByType[t]||(F.chipCountsByType[t]={});}
 // Clears chip counts AND the picklist-edit seed in one shot. Every reset site (brand/type
@@ -1242,6 +1446,10 @@ function updateNavSync(){
     }else{
       zone.classList.remove('on');
       zone.style.transform='';
+      // Drawer is anchored to the bar — close it when the bar leaves view so it
+      // can't float orphaned over Pick List / Settings.
+      const d=document.getElementById('order-drawer');
+      if(d&&d.classList.contains('on'))closeOrderPicker();
     }
   }
 }
@@ -1547,9 +1755,10 @@ function onAddToList(){
     Object.entries(counts).forEach(([sz,count])=>{
       if(!count)return;
       const stock=sizeMap[sz]||0;
-      const dup=pickList.find(p=>p.lot===F.lot&&p.model===F.style&&p.sizeType===stLabel&&p.size===sz);
+      // Dedup key now includes order so the same lot+size can appear once per order.
+      const dup=pickList.find(p=>p.lot===F.lot&&p.model===F.style&&p.sizeType===stLabel&&p.size===sz&&(p.order||'')===activeOrder);
       if(dup){dup.ordered=count;updated++;}
-      else{pickList.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),lot:F.lot,flag:entry.flag,model:F.style,brand:entry.brand,category:entry.category,sizeType:stLabel,size:sz,qty:stock,aisle:entry.aisle,ordered:count});added++;}
+      else{pickList.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),lot:F.lot,flag:entry.flag,model:F.style,brand:entry.brand,category:entry.category,sizeType:stLabel,size:sz,qty:stock,aisle:entry.aisle,ordered:count,order:activeOrder});added++;}
     });
   });
   // Picklist-edit deletion sweep: any chip combo that was pre-populated by editFromPicklist
@@ -1564,7 +1773,7 @@ function onAddToList(){
       const stillPresent=bucketMap&&bucketMap[size]>0;
       if(stillPresent)return;
       const stLabel=bucket==='single'?'—':bucket;
-      const idx=pickList.findIndex(p=>p.lot===F.lot&&p.model===F.style&&p.sizeType===stLabel&&p.size===size);
+      const idx=pickList.findIndex(p=>p.lot===F.lot&&p.model===F.style&&p.sizeType===stLabel&&p.size===size&&(p.order||'')===activeOrder);
       if(idx>=0){pickList.splice(idx,1);removed++;}
     });
   }
@@ -1621,6 +1830,10 @@ function renderPickList(){
     const[ta,na,sa]=aisleSortKey(a.aisle),[tb,nb,sb]=aisleSortKey(b.aisle);
     if(ta!==tb)return ta-tb;if(na!==nb)return na-nb;if(sa!==sb)return sa<sb?-1:1;
     if(a.lot!==b.lot)return a.lot<b.lot?-1:1;
+    // Same lot+model from different orders sit next to each other (same shelf,
+    // pickable in one motion) but get separate .lsg blocks so the row colors stay grouped.
+    const ao=a.order||'',bo=b.order||'';
+    if(ao!==bo)return ao<bo?-1:1;
     if(a.sizeType!==b.sizeType){const ST={regular:0,short:1,long:2};return(ST[a.sizeType]??9)-(ST[b.sizeType]??9);}
     return sizeKeyCmp(a.size,b.size);
   });
@@ -1628,21 +1841,44 @@ function renderPickList(){
   sorted.forEach(item=>{const k=item.aisle!=null?String(item.aisle):'Unknown';if(!byAisle[k]){byAisle[k]=[];aisleOrder.push(k);}byAisle[k].push(item);});
   const n=sorted.length,na=aisleOrder.length;
   stats.innerHTML=`<strong>${n}</strong> item${n!==1?'s':''} across <strong>${na}</strong> aisle${na!==1?'s':''}`;
+  let html='';
+  // Order legend bar — only render when at least one tagged order exists in
+  // the picklist (or the active order isn't yet represented). Tapping a chip
+  // toggles activeOrder so subsequent adds inherit that label.
+  const labels=listOrderLabels().filter(l=>l!=='');
+  if(labels.length||activeOrder){
+    html+='<div class="olegend"><span class="olegend-lbl">Orders</span>';
+    const allLabels=[...labels];
+    if(activeOrder&&!allLabels.includes(activeOrder))allLabels.unshift(activeOrder);
+    allLabels.forEach(label=>{
+      const count=pickList.filter(p=>(p.order||'')===label).length;
+      const isActive=label===activeOrder?' active':'';
+      const safe=escapeAttr(label);
+      html+=`<button class="olegend-chip${isActive}${orderColorClass(label)}" data-order="${safe}" type="button"><span class="oname">${safe}</span><span class="ocount-mini">${count}</span></button>`;
+    });
+    html+='</div>';
+  }
   // 6 header cells to match the 6-column .prow grid (col 4 is the flexible spacer).
-  let html=`<div class="pcols"><span>Ordered</span><span class="pcol-type">Type</span><span class="pcol-size">Size</span><span></span><span>In Stock</span><span></span></div>`;
+  html+=`<div class="pcols"><span>Ordered</span><span class="pcol-type">Type</span><span class="pcol-size">Size</span><span></span><span>In Stock</span><span></span></div>`;
   aisleOrder.forEach(aisle=>{
     const ai=byAisle[aisle],byLot={},lotOrder=[];
-    ai.forEach(item=>{const k=item.lot+'||'+item.model;if(!byLot[k]){byLot[k]=[];lotOrder.push(k);}byLot[k].push(item);});
+    // Group key now includes order so two orders' worth of the same lot show
+    // as separate .lsg blocks (same shelf area, distinct color stripes).
+    ai.forEach(item=>{const k=item.lot+'||'+item.model+'||'+(item.order||'');if(!byLot[k]){byLot[k]=[];lotOrder.push(k);}byLot[k].push(item);});
     html+=`<div class="ag"><div class="ah"><span class="albl">Aisle</span><span class="anum">${aisle}</span><span class="acnt">${ai.length} item${ai.length!==1?'s':''}</span></div>`;
     lotOrder.forEach(key=>{
       const items=byLot[key],rep=items[0];
       const fh=rep.flag?`<span class="fbadge f${rep.flag}">${rep.flag}</span>`:'';
-      html+=`<div class="lsg"><div class="lsh" role="button" tabindex="0" data-lot="${rep.lot.replace(/"/g,'&quot;')}" data-model="${rep.model.replace(/"/g,'&quot;')}" aria-label="Edit ${rep.lot.replace(/"/g,'&quot;')} ${rep.model.replace(/"/g,'&quot;')}">${fh}<span class="lshlot">${rep.lot}</span><span class="lshmod">— ${rep.model}</span><span class="lshchev" aria-hidden="true">›</span></div>`;
+      const ord=rep.order||'';
+      const safeOrd=escapeAttr(ord);
+      const ordTag=ord?`<span class="lsh-order${orderColorClass(ord)}"><span class="oname">${safeOrd}</span></span>`:'';
+      html+=`<div class="lsg"><div class="lsh" role="button" tabindex="0" data-lot="${escapeAttr(rep.lot)}" data-model="${escapeAttr(rep.model)}" data-order="${safeOrd}" aria-label="Edit ${escapeAttr(rep.lot)} ${escapeAttr(rep.model)}${ord?(' for order '+safeOrd):''}">${fh}<span class="lshlot">${rep.lot}</span><span class="lshmod">— ${rep.model}</span>${ordTag}<span class="lshchev" aria-hidden="true">›</span></div>`;
+      const oi=orderStyle(ord);
+      const rowClasses='prow'+(oi?` has-order o${oi}`:'');
       items.forEach(item=>{
         const oc=item.ordered>0?'ocount hc':'ocount',ol=item.ordered>0?item.ordered:'—';
         const tl=TL[item.sizeType]||item.sizeType;
-        // 6 cells: Ordered | Type | Size | (spacer) | In Stock | Picked
-        html+=`<div class="prow" data-id="${item.id}"><div><span class="${oc}">${ol}</span></div><div class="ptyp">${tl}</div><div class="psz">${item.size}</div><div></div><div><span class="qbadge">${item.qty}</span></div><button class="rbtn" onclick="removeItem('${item.id}')">Picked</button></div>`;
+        html+=`<div class="${rowClasses}" data-id="${item.id}"><div><span class="${oc}">${ol}</span></div><div class="ptyp">${tl}</div><div class="psz">${item.size}</div><div></div><div><span class="qbadge">${item.qty}</span></div><button class="rbtn" onclick="removeItem('${item.id}')">Picked</button></div>`;
       });
       html+=`</div>`;
     });
@@ -1652,9 +1888,13 @@ function renderPickList(){
   // Wire tap-to-edit on every .lsh lot header. Delegated per-element rather than via
   // event-delegation on body so the role="button" / keyboard handler stays scoped.
   body.querySelectorAll('.lsh[data-lot]').forEach(el=>{
-    const fire=()=>editFromPicklist(el.dataset.lot,el.dataset.model);
+    const fire=()=>editFromPicklist(el.dataset.lot,el.dataset.model,el.dataset.order||'');
     el.onclick=fire;
     el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fire();}};
+  });
+  // Wire legend chips: tap to toggle activeOrder.
+  body.querySelectorAll('.olegend-chip[data-order]').forEach(el=>{
+    el.onclick=()=>toggleActiveOrder(el.dataset.order);
   });
   updateTypeColWidth();
   updateOrderedBadgeWidth();
@@ -1761,7 +2001,7 @@ function showCompleteAnimation(){
 // Tap-to-edit: navigate from a picklist .lsh row to Find with brand/type/lot/style
 // auto-loaded and chips pre-filled from existing pickList rows for that lot+model.
 // Adjusting and saving upserts; clearing a pre-populated chip removes that row.
-function editFromPicklist(lot,model){
+function editFromPicklist(lot,model,order){
   // Wipe any stale state from a prior picklist tap that wasn't saved. Without this,
   // tapping lot A then lot B without saving A leaves A's seed entries, and saving B
   // could phantom-delete A's rows.
@@ -1774,10 +2014,14 @@ function editFromPicklist(lot,model){
   const entry=inventory.find(i=>i.lot===lot&&i.model===model);
   if(!entry){showToast('Lot no longer in inventory','#a44');return;}
   F.brand=entry.brand;F.type=entry.category;F.lot=lot;F.style=model;
+  // Switch active order to the one whose lot row was tapped so subsequent
+  // adds stay scoped to that order. Only seed chips from rows in that order.
+  const ord=order||'';
+  setActiveOrder(ord);
   // Walk pickList for matching rows. Reverse-map row.sizeType → bucket key
   // ('—' → 'single', everything else passes through).
   const seededBuckets=[];
-  pickList.filter(p=>p.lot===lot&&p.model===model).forEach(p=>{
+  pickList.filter(p=>p.lot===lot&&p.model===model&&(p.order||'')===ord).forEach(p=>{
     const bucketKey=p.sizeType==='—'?'single':p.sizeType;
     if(!F.chipCountsByType[bucketKey])F.chipCountsByType[bucketKey]={};
     F.chipCountsByType[bucketKey][p.size]=p.ordered;
@@ -1853,14 +2097,17 @@ function skipReview(idx){unclassified.push(unclassified.splice(idx,1)[0]);save(S
 // ── Settings ──
 function renderSettings(){renderFileList();}
 function renderFileList(){
+  // Per-file remove was removed: it only dropped the file's name from this list
+  // without clearing its inventory rows, which made users think they were clearing
+  // the file when they weren't. New imports then conflicted with the leftover rows.
+  // Use Clear Inventory to remove everything instead.
   const fl=document.getElementById('flist');fl.innerHTML='';
-  importedFiles.forEach((f,idx)=>{
+  importedFiles.forEach(f=>{
     const div=document.createElement('div');div.className='fitem';
-    div.innerHTML=`<div class="fiico">📄</div><div class="finame">${f.name}</div><div class="ficnt">${f.itemCount} items${f.unclassCount?`, ${f.unclassCount} need review`:''}</div><button class="firem" onclick="removeFile(${idx})">×</button>`;
+    div.innerHTML=`<div class="fiico">📄</div><div class="finame">${f.name}</div><div class="ficnt">${f.itemCount} items${f.unclassCount?`, ${f.unclassCount} need review`:''}</div>`;
     fl.appendChild(div);
   });
 }
-function removeFile(idx){importedFiles.splice(idx,1);save(SK.files,importedFiles);renderFileList();showToast('File removed from list');}
 function renderRulesEditor(){
   const ed=document.getElementById('rules-editor');
   const entries=Object.entries(memory);
@@ -1978,7 +2225,7 @@ function init(){
     fitAddBtnText();  // re-pick button text based on new available width
   },120);});
   restoreFindState();
-  renderFindPage();renderReviewNav();updateNavPill();
+  renderFindPage();renderReviewNav();updateNavPill();renderOrderHandle();
   // Pre-render non-find pages so their content is ready when the user swipes to them
   // (they're always in the DOM now, so latent render state can lag behind state changes).
   renderPickList();renderReview();renderSettings();
