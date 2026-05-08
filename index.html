@@ -604,7 +604,15 @@ function openOrderPicker(){
   const d=document.getElementById('order-drawer');if(!d)return;
   d.classList.add('on');
   const handle=document.getElementById('order-handle');if(handle){handle.classList.add('open');handle.setAttribute('aria-expanded','true');}
-  setTimeout(()=>{const i=document.getElementById('op-new-input');if(i)i.focus();},120);
+  // No auto-focus: on mobile the keyboard would pop up when the user just opened the drawer to look.
+  const inp=document.getElementById('op-new-input');
+  if(inp)inp.value=nextDefaultOrderLabel();
+}
+function nextDefaultOrderLabel(){
+  const used=new Set(listOrderLabels().filter(l=>l!==''));
+  if(activeOrder)used.add(activeOrder);
+  let n=1;while(used.has('Order '+n))n++;
+  return 'Order '+n;
 }
 function closeOrderPicker(){
   const d=document.getElementById('order-drawer');if(d)d.classList.remove('on');
