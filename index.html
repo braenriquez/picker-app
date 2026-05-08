@@ -122,7 +122,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .addbtn:hover{background:var(--accent2)}
 .addbtn:active{transform:scale(.98)}
 .addbtn:disabled{opacity:.28;cursor:not-allowed;transform:none}
-.add-btn-zone{position:relative;flex-shrink:0;padding:8px 14px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:10px;will-change:transform}
+.add-btn-zone{flex-shrink:0;padding:8px 14px max(8px,env(safe-area-inset-bottom,8px));background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:10px;will-change:transform}
 .add-btn-zone.on{display:flex}
 .fbadge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:.67rem;font-weight:700;flex-shrink:0}
 .fC{background:var(--bluebg);color:var(--bluet)}.fP{background:var(--greenbg);color:var(--greenbt)}
@@ -295,25 +295,26 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .olegend-chip.active{border-color:var(--accent);border-left-color:var(--ocolor,var(--accent));background:var(--accentbg)}
 .olegend-chip .oname{font-size:.7rem;font-weight:700;color:var(--text);line-height:1}
 .olegend-chip .ocount-mini{font-size:.58rem;color:var(--muted);font-weight:600;background:var(--bg);border-radius:7px;padding:1px 6px}
-/* Drawer trigger tab — small handle floating just above the action bar. Tap
-   to toggle the order drawer. Stays unobtrusive when no orders exist; once an
-   active order is set, the tab gets a colored left edge to surface it. */
+/* Order drawer dock — sits as a sibling above .add-btn-zone in the body flex
+   column. The drawer container is `position:relative` so the floating handle
+   tab can anchor to its top edge — when the body expands, the drawer's top
+   moves up and the handle rides with it (so it never covers the add button).
+   Hidden as a unit when the bar is hidden (off Find page) via .show class. */
+#order-drawer{position:relative;flex-shrink:0;display:none;flex-direction:column;background:var(--surface);will-change:transform}
+#order-drawer.show{display:flex}
+.op-body{max-height:0;overflow:hidden;transition:max-height .25s ease;display:flex;flex-direction:column;background:var(--surface);border-top:1px solid var(--border2);border-bottom:1px solid var(--border);box-shadow:0 -6px 18px rgba(0,0,0,.35)}
+#order-drawer.on .op-body{max-height:min(50vh,360px)}
+/* Drawer trigger tab — anchored to the drawer container's top edge so it
+   rises with the drawer body when it expands. Tap to open/close. Subtle when
+   no active order; once one is set it shows the order name + colored stripe. */
 .order-handle{position:absolute;top:-22px;right:14px;height:23px;padding:0 12px 1px 11px;background:var(--surface);border:1px solid var(--border2);border-bottom:1px solid var(--surface);border-radius:8px 8px 0 0;border-left:3px solid var(--ocolor,var(--border2));font-family:'Bebas Neue',sans-serif;font-size:.72rem;letter-spacing:1.4px;color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:1;z-index:1;transition:color .15s}
 .order-handle:hover{color:var(--accent2)}
 .order-handle .oh-name{color:var(--text);font-family:'DM Sans',sans-serif;font-weight:700;font-size:.74rem;letter-spacing:.2px;text-transform:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .order-handle .oh-chev{display:inline-block;font-size:.7rem;transition:transform .2s}
 .order-handle.open .oh-chev{transform:rotate(180deg)}
-/* Docked order drawer. Sits as a sibling above .add-btn-zone in the body
-   flex column. When closed, display:none — when open, slides up. Doesn't take
-   a permanent row in the layout; the add button always sits at the bottom. */
-#order-drawer{flex-shrink:0;display:none;flex-direction:column;background:var(--surface);border-top:1px solid var(--border2);border-bottom:1px solid var(--border);box-shadow:0 -6px 18px rgba(0,0,0,.35);max-height:min(50vh,360px);overflow:hidden}
-#order-drawer.on{display:flex;animation:drawerUp .22s cubic-bezier(.32,1.18,.6,1) forwards}
-@keyframes drawerUp{from{transform:translateY(40%);opacity:0}to{transform:translateY(0);opacity:1}}
-.op-hd{padding:11px 14px 8px;display:flex;align-items:center;justify-content:space-between}
+.op-hd{padding:11px 14px 6px;display:flex;align-items:center;justify-content:space-between}
 .op-title{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:1.8px;color:var(--accent)}
 .op-sub{font-size:.6rem;color:var(--muted);margin-top:1px;letter-spacing:.4px}
-.op-close{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1;padding:0 6px;font-family:'DM Sans',sans-serif}
-.op-close:hover{color:var(--text)}
 .op-list{padding:2px 10px;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:200px}
 .op-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent;border-left:3px solid var(--ocolor,transparent)}
 .op-row:hover{background:var(--s2)}
@@ -459,27 +460,28 @@ select:disabled{opacity:.3;cursor:not-allowed}
 <!-- Bottom action bar: Aisle + In Stock (auto-sized, flex:0) and Add button (flex:1).
      The button text adapts down a priority list to whatever fits the leftover space. -->
 <div id="order-drawer" role="region" aria-labelledby="op-title">
-  <div class="op-hd">
-    <div>
-      <div class="op-title" id="op-title">Orders</div>
-      <div class="op-sub" id="op-sub">Tag new picks by order — leave blank to keep one combined list</div>
+  <button class="order-handle" id="order-handle" type="button" onclick="toggleOrderDrawer()" aria-label="Toggle orders drawer" aria-expanded="false">
+    <span class="oh-name" id="oh-name">Orders</span>
+    <span class="oh-chev" aria-hidden="true">▴</span>
+  </button>
+  <div class="op-body">
+    <div class="op-hd">
+      <div>
+        <div class="op-title" id="op-title">Orders</div>
+        <div class="op-sub" id="op-sub">Tag new picks by order — leave blank to keep one combined list</div>
+      </div>
     </div>
-    <button class="op-close" type="button" onclick="closeOrderPicker()" aria-label="Close orders drawer">×</button>
+    <div class="op-list" id="op-list"></div>
+    <form class="op-new" id="op-new-form" onsubmit="event.preventDefault();addNewOrder()">
+      <input id="op-new-input" type="text" placeholder="New order label (e.g. 42, Smith)" maxlength="20" autocomplete="off">
+      <button type="submit" id="op-new-btn">Add</button>
+    </form>
   </div>
-  <div class="op-list" id="op-list"></div>
-  <form class="op-new" id="op-new-form" onsubmit="event.preventDefault();addNewOrder()">
-    <input id="op-new-input" type="text" placeholder="New order label (e.g. 42, Smith)" maxlength="20" autocomplete="off">
-    <button type="submit" id="op-new-btn">Add</button>
-  </form>
 </div>
 <div class="add-btn-zone" id="add-btn-zone">
   <div class="az-info"><div class="az-lbl">Aisle</div><div class="az-val" id="ic-aisle">—</div></div>
   <div class="az-info"><div class="az-lbl" id="ic-ship-lbl">In Stock</div><div class="az-val" id="ic-ship">—</div></div>
   <button class="addbtn" id="add-btn" disabled>Add to Pick List</button>
-  <button class="order-handle" id="order-handle" type="button" onclick="toggleOrderDrawer()" aria-label="Toggle orders drawer" aria-expanded="false">
-    <span class="oh-name" id="oh-name">Orders</span>
-    <span class="oh-chev" aria-hidden="true">▴</span>
-  </button>
 </div>
 <div id="complete-overlay">
   <svg id="complete-check" viewBox="0 0 52 52">
@@ -1440,16 +1442,27 @@ function updateNavSync(){
   // This is the ONLY place that toggles .add-btn-zone.on.
   const zone=document.getElementById('add-btn-zone');
   if(zone){
+    const drawer=document.getElementById('order-drawer');
     if(getEntry()&&scroller.scrollLeft<w){
       zone.classList.add('on');
       zone.style.transform=`translate3d(${-scroller.scrollLeft}px,0,0)`;
+      // Drawer rides with the bar — show it (and slide with the same transform)
+      // so the handle stays anchored to the bar's top edge during page swipes.
+      if(drawer){
+        drawer.classList.add('show');
+        drawer.style.transform=`translate3d(${-scroller.scrollLeft}px,0,0)`;
+      }
     }else{
       zone.classList.remove('on');
       zone.style.transform='';
-      // Drawer is anchored to the bar — close it when the bar leaves view so it
-      // can't float orphaned over Pick List / Settings.
-      const d=document.getElementById('order-drawer');
-      if(d&&d.classList.contains('on'))closeOrderPicker();
+      // Drawer is anchored to the bar — hide and collapse it when the bar
+      // leaves view so it can't float orphaned over Pick List / Settings.
+      if(drawer){
+        drawer.classList.remove('show','on');
+        drawer.style.transform='';
+        const handle=document.getElementById('order-handle');
+        if(handle){handle.classList.remove('open');handle.setAttribute('aria-expanded','false');}
+      }
     }
   }
 }
