@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Picker Inventory — Admin</title>
+<style>
+  :root { --bg:#0e1116; --card:#171b22; --line:#262c36; --txt:#e6e9ee; --muted:#8b94a3; --accent:#4f8cff; --bad:#ff5c5c; --good:#37d07a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--txt); }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:16px; margin:0; }
+  #status { color:var(--muted); font-size:13px; }
+  main { max-width:980px; margin:0 auto; padding:20px; display:grid; gap:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card h2 { margin:0 0 12px; font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  button { background:var(--accent); color:#fff; border:0; border-radius:7px; padding:7px 12px; font-size:13px; cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--txt); }
+  button.danger { background:var(--bad); }
+  input, select { background:#0e1218; border:1px solid var(--line); color:var(--txt); border-radius:6px; padding:6px 8px; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .mono { font-family:ui-monospace,monospace; }
+  .pill { font-size:11px; padding:2px 7px; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
+  .keyout { background:#0b2a14; border:1px solid var(--good); color:#bff5d2; padding:10px; border-radius:7px; margin-top:8px; word-break:break-all; }
+  .muted { color:var(--muted); }
+  .drop { border:1.5px dashed var(--line); border-radius:8px; padding:18px; text-align:center; color:var(--muted); cursor:pointer; }
+  .drop.over { border-color:var(--accent); color:var(--txt); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Picker Inventory · Admin</h1>
+  <span id="status">loading…</span>
+</header>
+<main>
+  <section class="card">
+    <h2>Upload inventory (manual fallback)</h2>
+    <div id="drop" class="drop">Drop .xls/.xlsx files here, or click to choose</div>
+    <input id="file" type="file" accept=".xls,.xlsx" multiple hidden>
+    <div id="uploadMsg" class="muted" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Connection keys</h2>
+    <div class="row">
+      <input id="keyLabel" placeholder="Label, e.g. Jose's iPad">
+      <button id="newKey">Generate key</button>
+    </div>
+    <div id="keyOut"></div>
+    <table style="margin-top:12px"><thead><tr><th>Label</th><th>Key id</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+      <tbody id="keyRows"></tbody></table>
+  </section>
+
+  <section class="card">
+    <h2>Needs a category</h2>
+    <div id="pending" class="muted">none</div>
+  </section>
+
+  <section class="card">
+    <h2>Category overrides</h2>
+    <table><thead><tr><th>Model</th><th>Category</th><th>Updated</th></tr></thead><tbody id="ovRows"></tbody></table>
+  </section>
+
+  <section class="card">
+    <h2>Versions</h2>
+    <table><thead><tr><th>#</th><th>When</th><th>Source</th><th>Items</th><th>Unclass</th><th></th></tr></thead>
+      <tbody id="verRows"></tbody></table>
+  </section>
+
+  <section class="card">
+    <h2>Ingest log</h2>
+    <table><thead><tr><th>When</th><th>Source</th><th>Status</th><th>Message</th></tr></thead><tbody id="logRows"></tbody></table>
+  </section>
+</main>
+
+<script>
+const CATEGORIES = ['Suit','Jacket','Pants','Vest','Shirt','Jeans','Boys'];
+const j = (r) => r.json();
+const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
+async function api(path, opts) { const r = await fetch(path, opts); if (!r.ok) throw new Error((await r.json().catch(()=>({})))?.error || r.status); return r.json(); }
+
+async function loadStatus() {
+  const s = await api('/admin/api/status');
+  const c = s.current;
+  document.getElementById('status').textContent = c
+    ? `v${c.id} · ${c.item_count} items · ${c.unclass_count} unclassified${s.envelope ? ' · 🔒 envelope' : ''}`
+    : 'no inventory published yet';
+}
+
+async function loadKeys() {
+  const keys = await api('/admin/api/keys');
+  document.getElementById('keyRows').innerHTML = keys.map(k => `
+    <tr><td>${esc(k.label)}</td><td class="mono">${k.key_id}</td><td>${fmt(k.last_used_at)}</td>
+    <td>${k.revoked_at ? '<span class="pill" style="color:var(--bad)">revoked</span>' : '<span class="pill" style="color:var(--good)">active</span>'}</td>
+    <td>${k.revoked_at ? '' : `<button class="ghost danger" data-revoke="${k.id}">Revoke</button>`}</td></tr>`).join('') || '<tr><td colspan=5 class="muted">no keys yet</td></tr>';
+}
+
+async function loadOverrides() {
+  const { overrides, pending } = await api('/admin/api/overrides');
+  document.getElementById('pending').innerHTML = pending.length ? pending.map(p => `
+    <div class="row" style="margin:4px 0">
+      <span class="mono" style="flex:1">${esc(p.model)}</span>
+      <span class="muted">${esc(p.brand||'')} · ${esc(p.lot||'')}</span>
+      <select data-model="${esc(p.model)}">${['',...CATEGORIES].map(c=>`<option value="${c}">${c||'choose…'}</option>`).join('')}</select>
+      <button data-assign="${esc(p.model)}">Assign</button>
+    </div>`).join('') : '<span class="muted">nothing pending 🎉</span>';
+  document.getElementById('ovRows').innerHTML = overrides.map(o => `<tr><td class="mono">${esc(o.model)}</td><td>${esc(o.category)}</td><td>${fmt(o.updated_at)}</td></tr>`).join('') || '<tr><td colspan=3 class="muted">none</td></tr>';
+}
+
+async function loadVersions() {
+  const [vers, status] = await Promise.all([api('/admin/api/versions'), api('/admin/api/status')]);
+  const activeId = status.current && status.current.id;
+  document.getElementById('verRows').innerHTML = vers.map(v => {
+    const active = v.id === activeId;
+    return `<tr style="${active ? 'background:rgba(55,208,122,.10)' : ''}">
+      <td>${v.id}${active ? ' <span class="pill" style="color:var(--good);border-color:var(--good)">● active</span>' : ''}</td>
+      <td>${fmt(v.created_at)}</td><td>${esc(v.source)}</td><td>${v.item_count}</td><td>${v.unclass_count}</td>
+      <td class="row">${active ? '<span class="muted" style="font-size:12px">serving now</span>' : `<button class="ghost" data-activate="${v.id}">Activate</button>`}<button class="ghost" data-rebuild="${v.id}">Rebuild</button></td></tr>`;
+  }).join('') || '<tr><td colspan=6 class="muted">none</td></tr>';
+}
+
+async function loadLog() {
+  const log = await api('/admin/api/ingest-log');
+  document.getElementById('logRows').innerHTML = log.map(l => `<tr><td>${fmt(l.ts)}</td><td>${esc(l.source||'')}</td>
+    <td style="color:${l.status==='ok'?'var(--good)':'var(--bad)'}">${esc(l.status||'')}</td><td>${esc(l.message||'')}</td></tr>`).join('') || '<tr><td colspan=4 class="muted">empty</td></tr>';
+}
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function refreshAll(){ await Promise.all([loadStatus(),loadKeys(),loadOverrides(),loadVersions(),loadLog()]); }
+
+// --- events ---
+document.getElementById('newKey').onclick = async () => {
+  const label = document.getElementById('keyLabel').value.trim();
+  if (!label) return;
+  try {
+    const { key } = await api('/admin/api/keys', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ label }) });
+    document.getElementById('keyOut').innerHTML = `<div class="keyout"><b>Copy now — shown once:</b><br><span class="mono">${esc(key)}</span></div>`;
+    document.getElementById('keyLabel').value = '';
+    loadKeys();
+  } catch(e){ alert('Error: '+e.message); }
+};
+
+document.addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.dataset.revoke) { if(confirm('Revoke this key?')){ await api(`/admin/api/keys/${t.dataset.revoke}/revoke`,{method:'POST'}); loadKeys(); } }
+  if (t.dataset.assign) {
+    const model = t.dataset.assign;
+    const sel = document.querySelector(`select[data-model="${CSS.escape(model)}"]`);
+    if (!sel.value) return;
+    await api('/admin/api/overrides',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model,category:sel.value})});
+    loadOverrides();
+  }
+  if (t.dataset.activate) { await api(`/admin/api/versions/${t.dataset.activate}/activate`,{method:'POST'}); refreshAll(); }
+  if (t.dataset.rebuild) {
+    if(confirm('Rebuild a new version from this one\'s source files using current overrides?')){
+      const { versionId } = await api(`/admin/api/versions/${t.dataset.rebuild}/rebuild`,{method:'POST'});
+      alert('Built version '+versionId); refreshAll();
+    }
+  }
+});
+
+// --- upload ---
+const drop = document.getElementById('drop'), fileInput = document.getElementById('file');
+drop.onclick = () => fileInput.click();
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop', e => upload(e.dataTransfer.files));
+fileInput.addEventListener('change', e => upload(e.target.files));
+async function upload(files){
+  if(!files.length) return;
+  const fd = new FormData();
+  for(const f of files) fd.append('file', f, f.name);
+  document.getElementById('uploadMsg').textContent = 'Uploading & parsing…';
+  try {
+    const { versionId } = await api('/admin/api/inventory/upload',{method:'POST',body:fd});
+    document.getElementById('uploadMsg').textContent = 'Published version '+versionId;
+    refreshAll();
+  } catch(e){ document.getElementById('uploadMsg').textContent = 'Error: '+e.message; }
+}
+
+refreshAll();
+setInterval(loadStatus, 15000);
+</script>
+</body>
+</html>
