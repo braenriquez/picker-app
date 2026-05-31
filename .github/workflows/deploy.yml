@@ -23,8 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v4
+      # Publish ONLY the PWA assets — keep server/ and deploy/ source off the public Pages site.
+      - name: Assemble PWA site
+        run: |
+          mkdir -p _site
+          cp index.html sw.js manifest.json icon.svg icon-192.png icon-512.png _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - uses: actions/deploy-pages@v4
         id: deployment

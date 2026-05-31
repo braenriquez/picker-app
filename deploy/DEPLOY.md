@@ -48,9 +48,8 @@ pct enter <VMID>        # drops you into a root shell in the container
 
 ```bash
 apt-get update && apt-get install -y curl
-# Use main once PR #1 is merged; until then pull the bootstrap script from the branch:
-curl -fsSL https://raw.githubusercontent.com/braenriquez/picker-app/inventory-backend/deploy/setup.sh -o setup.sh
-BRANCH=inventory-backend bash setup.sh     # drop BRANCH=... after merge
+curl -fsSL https://raw.githubusercontent.com/braenriquez/picker-app/main/deploy/setup.sh -o setup.sh
+bash setup.sh
 ```
 
 `setup.sh` installs Node 22, build tools, and Tailscale; clones the repo to `/opt/picker-app`;

@@ -29,14 +29,23 @@ export default async function apiRoutes(fastify) {
     if (ver.blob_enc) return reply.code(409).send({ error: 'envelope enabled; use /api/inventory.enc' });
 
     const etag = `"${ver.etag}"`;
-    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    // created_at is when the admin published this version — the inventory's "as of" date.
+    if (req.headers['if-none-match'] === etag) {
+      return reply
+        .header('ETag', etag)
+        .header('X-Inventory-Version', String(ver.id))
+        .header('X-Inventory-Published', String(ver.created_at))
+        .code(304)
+        .send();
+    }
 
     reply
       .header('ETag', etag)
       .header('Cache-Control', 'no-cache')
       .header('Content-Type', 'application/json')
       .header('Content-Encoding', 'gzip')
-      .header('X-Inventory-Version', String(ver.id));
+      .header('X-Inventory-Version', String(ver.id))
+      .header('X-Inventory-Published', String(ver.created_at));
     return reply.send(ver.blob); // blob is gzipped JSON { items, unclassified }
   });
 

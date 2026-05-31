@@ -24,7 +24,7 @@ await fastify.register(cors, {
   origin: corsOrigin,
   methods: ['GET', 'POST'],
   // The PWA reads these off the inventory response; they aren't CORS-safelisted by default.
-  exposedHeaders: ['ETag', 'X-Inventory-Version'],
+  exposedHeaders: ['ETag', 'X-Inventory-Version', 'X-Inventory-Published'],
   maxAge: 86400,
 });
 

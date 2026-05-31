@@ -189,6 +189,11 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .sync-status{font-size:.7rem;color:var(--muted);min-height:1em}
 .sync-status.ok{color:var(--greent)}
 .sync-status.err{color:var(--redt)}
+.sync-meta{display:flex;flex-direction:column;gap:5px;margin-top:4px;padding-top:10px;border-top:1px solid var(--border)}
+.sync-meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sync-meta-row span{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.sync-meta-row b{font-size:.78rem;font-weight:600;color:var(--text)}
+.sync-meta-row b.stale{color:var(--reviewt)}
 .upzone{border:1.5px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
 .upzone:hover{border-color:var(--accent);background:rgba(200,169,110,.04)}
 .upzone .uzi{font-size:1.8rem;opacity:.4;margin-bottom:8px}
@@ -400,6 +405,10 @@ select:disabled{opacity:.3;cursor:not-allowed}
         <button class="btn-sync" id="sync-refresh">↻ Refresh Inventory</button>
       </div>
       <div class="sync-status" id="sync-status"></div>
+      <div class="sync-meta" id="sync-meta">
+        <div class="sync-meta-row"><span>Inventory dated</span><b id="sync-inv-date">—</b></div>
+        <div class="sync-meta-row"><span>Last refreshed</span><b id="sync-last">never</b></div>
+      </div>
     </div>
   </div>
   <div class="ss">
@@ -473,7 +482,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const CATEGORIES=['Suit','Jacket','Vest','Pants','Shirt','Jeans','Boys'];
-const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles',serverUrl:'gb_srv',connKey:'gb_connkey',invEtag:'gb_inv_etag'};
+const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles',serverUrl:'gb_srv',connKey:'gb_connkey',invEtag:'gb_inv_etag',invPublished:'gb_inv_pub',invSynced:'gb_inv_synced'};
 // Default API base for local dev. Override per-device in Settings → Server Sync (set it to your
 // Tailscale Funnel hostname in production). Empty string means "same origin as the PWA".
 const DEFAULT_SERVER_URL='http://127.0.0.1:8080';
@@ -1339,7 +1348,11 @@ async function refreshFromServer(){
     const headers={Authorization:'Bearer '+token};
     if(etag)headers['If-None-Match']=etag;
     const r=await fetch(base+'/api/inventory',{headers});
-    if(r.status===304){setSyncStatus('Already up to date.','ok');return;}
+    if(r.status===304){
+      save(SK.invSynced,Date.now());
+      const pub304=r.headers.get('X-Inventory-Published');if(pub304)save(SK.invPublished,Number(pub304));
+      renderServerSync();setSyncStatus('Already up to date.','ok');return;
+    }
     if(r.status===404){setSyncStatus('No inventory published on the server yet.','err');return;}
     if(!r.ok)throw new Error('inventory '+r.status);
     const data=await r.json();
@@ -1349,7 +1362,9 @@ async function refreshFromServer(){
     importedFiles=[{name:'Server sync'+(ver?(' · v'+ver):''),itemCount:inventory.length,unclassCount:unclassified.length}];
     save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);
     const newEtag=r.headers.get('ETag');if(newEtag)save(SK.invEtag,newEtag);
-    renderFileList();renderFindPage();renderReviewNav();
+    const pub=r.headers.get('X-Inventory-Published');if(pub)save(SK.invPublished,Number(pub));
+    save(SK.invSynced,Date.now());
+    renderFileList();renderFindPage();renderReviewNav();renderServerSync();
     setSyncStatus(`Synced ${inventory.length} items${unclassified.length?`, ${unclassified.length} need review`:''}.`,'ok');
     showToast(`Synced ${inventory.length} items`);
   }catch(e){
@@ -1358,11 +1373,32 @@ async function refreshFromServer(){
     btn.disabled=false;
   }
 }
+// Absolute date for the server's inventory "as of" reference, e.g. "May 28, 2026".
+function fmtInvDate(ts){return ts?new Date(Number(ts)).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):null;}
+// Relative time for the client's own last refresh, e.g. "just now", "3 hours ago", "May 24".
+function fmtAgo(ts){
+  if(!ts)return null;
+  const s=Math.max(0,(Date.now()-Number(ts))/1000);
+  if(s<45)return'just now';
+  if(s<90)return'a minute ago';
+  const m=s/60;if(m<45)return Math.round(m)+' min ago';
+  const h=m/60;if(h<22)return Math.round(h)+' hour'+(Math.round(h)===1?'':'s')+' ago';
+  const d=h/24;if(d<1.5)return'yesterday';
+  if(d<7)return Math.round(d)+' days ago';
+  return new Date(Number(ts)).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
 function renderServerSync(){
   const u=document.getElementById('sync-url'),k=document.getElementById('sync-key');
-  if(!u||!k)return;
-  u.value=load(SK.serverUrl,DEFAULT_SERVER_URL)||'';
-  k.value=load(SK.connKey,'')||'';
+  if(u)u.value=load(SK.serverUrl,DEFAULT_SERVER_URL)||'';
+  if(k)k.value=load(SK.connKey,'')||'';
+  const pub=load(SK.invPublished,0),syn=load(SK.invSynced,0);
+  const invEl=document.getElementById('sync-inv-date'),lastEl=document.getElementById('sync-last');
+  if(invEl)invEl.textContent=pub?fmtInvDate(pub):'—';
+  if(lastEl){
+    lastEl.textContent=syn?fmtAgo(syn):'never';
+    // Amber once it's been a few days since this device last pulled — a nudge to refresh.
+    lastEl.classList.toggle('stale',!!(syn&&(Date.now()-Number(syn))>3*864e5));
+  }
 }
 
 // ── Navigation ──
@@ -2084,7 +2120,7 @@ function updateMemory(sel){
   const model=sel.dataset.model,cat=sel.value;memory[model]=cat;save(SK.memory,memory);
   inventory.forEach(i=>{if(i.model===model)i.category=cat;});save(SK.inventory,inventory);renderFindPage();showToast(`Updated: ${model} → ${cat}`);
 }
-function clearInventory(){if(!confirm('Clear all imported inventory? Files will need re-uploading.'))return;inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);save(SK.invEtag,'');renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared');}
+function clearInventory(){if(!confirm('Clear all imported inventory? Files will need re-uploading.'))return;inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);save(SK.invEtag,'');save(SK.invPublished,'');save(SK.invSynced,'');renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared');}
 
 // ── Classifications page ──
 function renderClassificationsPage(){

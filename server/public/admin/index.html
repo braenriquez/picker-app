@@ -86,7 +86,7 @@ async function loadStatus() {
   const s = await api('/admin/api/status');
   const c = s.current;
   document.getElementById('status').textContent = c
-    ? `v${c.id} · ${c.item_count} items · ${c.unclass_count} unclassified${s.envelope ? ' · 🔒 envelope' : ''}`
+    ? `v${c.id} · dated ${fmt(c.created_at)} · ${c.item_count} items · ${c.unclass_count} unclassified${s.envelope ? ' · 🔒 envelope' : ''}`
     : 'no inventory published yet';
 }
 
