@@ -179,6 +179,21 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .ss-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .ss-lbl{font-size:.82rem;color:var(--text);flex:1}
 .ss-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
+.sync-lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:2px}
+.sync-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.85rem;padding:9px 11px;width:100%;outline:none;transition:border-color .15s}
+.sync-input:focus{border-color:var(--accent)}
+.sync-actions{display:flex;gap:8px;margin-top:4px}
+.btn-sync{flex:1;background:var(--accent);border:1px solid var(--accent);border-radius:6px;color:#1a1408;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:9px 12px;cursor:pointer;transition:all .15s}
+.btn-sync:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn-sync:disabled{opacity:.5;cursor:default}
+.sync-status{font-size:.7rem;color:var(--muted);min-height:1em}
+.sync-status.ok{color:var(--greent)}
+.sync-status.err{color:var(--redt)}
+.sync-meta{display:flex;flex-direction:column;gap:5px;margin-top:4px;padding-top:10px;border-top:1px solid var(--border)}
+.sync-meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sync-meta-row span{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.sync-meta-row b{font-size:.78rem;font-weight:600;color:var(--text)}
+.sync-meta-row b.stale{color:var(--reviewt)}
 .upzone{border:1.5px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
 .upzone:hover{border-color:var(--accent);background:rgba(200,169,110,.04)}
 .upzone .uzi{font-size:1.8rem;opacity:.4;margin-bottom:8px}
@@ -378,6 +393,25 @@ select:disabled{opacity:.3;cursor:not-allowed}
 
 <div class="page" id="page-settings">
   <div class="ss">
+    <div class="ss-hdr">Server Sync</div>
+    <div class="ss-body">
+      <div style="font-size:.75rem;color:var(--muted)">Pull the latest inventory from your server. Get a connection key from the admin.</div>
+      <label class="sync-lbl">Server URL</label>
+      <input id="sync-url" class="sync-input" type="url" inputmode="url" autocomplete="off" placeholder="http://127.0.0.1:8080">
+      <label class="sync-lbl">Connection key</label>
+      <input id="sync-key" class="sync-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="xxxxxxxx.XXXXXXXXXXXXXXXXXXXX">
+      <div class="sync-actions">
+        <button class="btn-o" id="sync-save">Save</button>
+        <button class="btn-sync" id="sync-refresh">↻ Refresh Inventory</button>
+      </div>
+      <div class="sync-status" id="sync-status"></div>
+      <div class="sync-meta" id="sync-meta">
+        <div class="sync-meta-row"><span>Inventory dated</span><b id="sync-inv-date">—</b></div>
+        <div class="sync-meta-row"><span>Last refreshed</span><b id="sync-last">never</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="ss">
     <div class="ss-hdr">Import Inventory</div>
     <div class="ss-body">
       <div class="prog-wrap" id="prog-wrap"><div class="prog-lbl" id="prog-lbl">Importing…</div><div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div></div>
@@ -448,7 +482,10 @@ select:disabled{opacity:.3;cursor:not-allowed}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const CATEGORIES=['Suit','Jacket','Vest','Pants','Shirt','Jeans','Boys'];
-const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles'};
+const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles',serverUrl:'gb_srv',connKey:'gb_connkey',invEtag:'gb_inv_etag',invPublished:'gb_inv_pub',invSynced:'gb_inv_synced'};
+// Default API base for local dev. Override per-device in Settings → Server Sync (set it to your
+// Tailscale Funnel hostname in production). Empty string means "same origin as the PWA".
+const DEFAULT_SERVER_URL='http://127.0.0.1:8080';
 const DEFAULT_RULES=[
   {p:"will arrive|CANCELLED|cutting#|arrive on|minimum order",c:"__SKIP__"},
   {p:"\\bjean\\b|\\bjeans\\b|shorts",c:"Jeans"},
@@ -1278,6 +1315,92 @@ async function importFile(file){
   showToast(`Imported ${newItems.length} items${newUnc.length?`, ${newUnc.length} need review`:''}`);
 }
 
+// ── Server sync ──
+// Pulls a full inventory snapshot from the backend (server/) and replaces the local copy.
+// The server returns the same {items, unclassified} shape importFile() builds, so the rest of
+// the app is unchanged. Auth is a connection key → short-lived JWT → inventory fetch.
+function serverBase(){
+  let u=load(SK.serverUrl,DEFAULT_SERVER_URL);
+  u=(u||'').trim().replace(/\/+$/,'');
+  return u||window.location.origin;
+}
+function setSyncStatus(msg,cls){const el=document.getElementById('sync-status');if(!el)return;el.textContent=msg||'';el.className='sync-status'+(cls?(' '+cls):'');}
+function saveServerCfg(announce){
+  const url=document.getElementById('sync-url').value.trim();
+  const key=document.getElementById('sync-key').value.trim();
+  save(SK.serverUrl,url);save(SK.connKey,key);
+  if(announce)setSyncStatus('Saved.','ok');
+}
+async function refreshFromServer(){
+  saveServerCfg(false); // persist field edits so Refresh works without a separate Save tap
+  const key=load(SK.connKey,'');
+  if(!key){setSyncStatus('Enter a connection key first.','err');return;}
+  const base=serverBase();
+  const btn=document.getElementById('sync-refresh');
+  btn.disabled=true;setSyncStatus('Connecting…');
+  try{
+    const a=await fetch(base+'/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key})});
+    if(a.status===401){setSyncStatus('Key rejected or revoked.','err');return;}
+    if(!a.ok)throw new Error('auth '+a.status);
+    const {token}=await a.json();
+    setSyncStatus('Fetching inventory…');
+    const etag=load(SK.invEtag,'');
+    const headers={Authorization:'Bearer '+token};
+    if(etag)headers['If-None-Match']=etag;
+    const r=await fetch(base+'/api/inventory',{headers});
+    if(r.status===304){
+      save(SK.invSynced,Date.now());
+      const pub304=r.headers.get('X-Inventory-Published');if(pub304)save(SK.invPublished,Number(pub304));
+      renderServerSync();setSyncStatus('Already up to date.','ok');return;
+    }
+    if(r.status===404){setSyncStatus('No inventory published on the server yet.','err');return;}
+    if(!r.ok)throw new Error('inventory '+r.status);
+    const data=await r.json();
+    inventory=Array.isArray(data.items)?data.items:[];
+    unclassified=Array.isArray(data.unclassified)?data.unclassified:[];
+    const ver=r.headers.get('X-Inventory-Version')||'';
+    importedFiles=[{name:'Server sync'+(ver?(' · v'+ver):''),itemCount:inventory.length,unclassCount:unclassified.length}];
+    save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);
+    const newEtag=r.headers.get('ETag');if(newEtag)save(SK.invEtag,newEtag);
+    const pub=r.headers.get('X-Inventory-Published');if(pub)save(SK.invPublished,Number(pub));
+    save(SK.invSynced,Date.now());
+    renderFileList();renderFindPage();renderReviewNav();renderServerSync();
+    setSyncStatus(`Synced ${inventory.length} items${unclassified.length?`, ${unclassified.length} need review`:''}.`,'ok');
+    showToast(`Synced ${inventory.length} items`);
+  }catch(e){
+    setSyncStatus('Could not reach the server. Check the URL and your connection.','err');
+  }finally{
+    btn.disabled=false;
+  }
+}
+// Absolute date for the server's inventory "as of" reference, e.g. "May 28, 2026".
+function fmtInvDate(ts){return ts?new Date(Number(ts)).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):null;}
+// Relative time for the client's own last refresh, e.g. "just now", "3 hours ago", "May 24".
+function fmtAgo(ts){
+  if(!ts)return null;
+  const s=Math.max(0,(Date.now()-Number(ts))/1000);
+  if(s<45)return'just now';
+  if(s<90)return'a minute ago';
+  const m=s/60;if(m<45)return Math.round(m)+' min ago';
+  const h=m/60;if(h<22)return Math.round(h)+' hour'+(Math.round(h)===1?'':'s')+' ago';
+  const d=h/24;if(d<1.5)return'yesterday';
+  if(d<7)return Math.round(d)+' days ago';
+  return new Date(Number(ts)).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+function renderServerSync(){
+  const u=document.getElementById('sync-url'),k=document.getElementById('sync-key');
+  if(u)u.value=load(SK.serverUrl,DEFAULT_SERVER_URL)||'';
+  if(k)k.value=load(SK.connKey,'')||'';
+  const pub=load(SK.invPublished,0),syn=load(SK.invSynced,0);
+  const invEl=document.getElementById('sync-inv-date'),lastEl=document.getElementById('sync-last');
+  if(invEl)invEl.textContent=pub?fmtInvDate(pub):'—';
+  if(lastEl){
+    lastEl.textContent=syn?fmtAgo(syn):'never';
+    // Amber once it's been a few days since this device last pulled — a nudge to refresh.
+    lastEl.classList.toggle('stale',!!(syn&&(Date.now()-Number(syn))>3*864e5));
+  }
+}
+
 // ── Navigation ──
 // Main pages live side-by-side in #page-scroll as horizontally-snapped flex slots.
 // Classifications is a separate fullscreen overlay, not part of the swipe track.
@@ -1968,7 +2091,7 @@ function confirmReview(idx){
 function skipReview(idx){unclassified.push(unclassified.splice(idx,1)[0]);save(SK.unclassified,unclassified);renderReview();}
 
 // ── Settings ──
-function renderSettings(){renderFileList();}
+function renderSettings(){renderServerSync();renderFileList();}
 function renderFileList(){
   // Per-file remove was removed: it only dropped the file's name from this list
   // without clearing its inventory rows, which made users think they were clearing
@@ -1997,7 +2120,7 @@ function updateMemory(sel){
   const model=sel.dataset.model,cat=sel.value;memory[model]=cat;save(SK.memory,memory);
   inventory.forEach(i=>{if(i.model===model)i.category=cat;});save(SK.inventory,inventory);renderFindPage();showToast(`Updated: ${model} → ${cat}`);
 }
-function clearInventory(){if(!confirm('Clear all imported inventory? Files will need re-uploading.'))return;inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared');}
+function clearInventory(){if(!confirm('Clear all imported inventory? Files will need re-uploading.'))return;inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);save(SK.invEtag,'');save(SK.invPublished,'');save(SK.invSynced,'');renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared');}
 
 // ── Classifications page ──
 function renderClassificationsPage(){
@@ -2087,6 +2210,8 @@ function init(){
   document.getElementById('add-btn').addEventListener('click',onAddToList);
   document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
   document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
+  document.getElementById('sync-save').addEventListener('click',()=>saveServerCfg(true));
+  document.getElementById('sync-refresh').addEventListener('click',refreshFromServer);
   document.getElementById('file-input').addEventListener('change',async e=>{for(const f of e.target.files)await importFile(f);e.target.value='';});
   // Re-balance brand/type/size-type chip rows on resize (debounced) so the equal-width,
   // max-3-per-line layout stays flush across viewport size changes.
@@ -2116,8 +2241,14 @@ function init(){
 init();
 </script>
 <script>
-if('serviceWorker' in navigator){
+// Skip the service worker on localhost so the dev server isn't fighting a stale cached shell.
+// (On the real Pages origin the SW still installs normally.)
+const _isLocalDev=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+if('serviceWorker' in navigator&&!_isLocalDev){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}else if(_isLocalDev&&'serviceWorker' in navigator){
+  // If a SW was registered earlier (e.g. from a prod visit), unregister it during dev.
+  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
 }
 </script>
 </body>
