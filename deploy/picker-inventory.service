@@ -1,0 +1,26 @@
+[Unit]
+Description=Picker Inventory API
+Documentation=https://github.com/braenriquez/picker-app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=picker
+Group=picker
+WorkingDirectory=/opt/picker-app/server
+EnvironmentFile=/opt/picker-app/server/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=3
+
+# --- hardening ---
+# The service only needs to write the SQLite data dir; everything else is read-only.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/picker-app/server/data
+
+[Install]
+WantedBy=multi-user.target
