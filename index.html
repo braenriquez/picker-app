@@ -44,7 +44,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
    slot with its own vertical scroll. Outer scrolls horizontally only. Internal padding
    uses `max(18px, calc(50% - 380px))` so content stays centered at 760px max on wide
    viewports without wrapping each page in an extra div. */
-#page-scroll{flex:1;display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+/* No CSS scroll-behavior:smooth here on purpose — it would animate EVERY programmatic scroll
+   (page restore on load, snap corrections), causing a slide-in on reload. Smooth animation is
+   opted into explicitly where wanted, via scrollTo({behavior:'smooth'}) in showPage(). */
+#page-scroll{flex:1;display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
 #page-scroll::-webkit-scrollbar{display:none}
 #page-scroll > .page{flex:0 0 100%;width:100%;max-width:none;margin:0;padding:18px max(18px,calc(50% - 380px));overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;display:block}
 /* Review page is conditionally shown — when hidden, its slot disappears from the track. */
@@ -1330,6 +1333,10 @@ async function refreshFromServer(){
     if(r.status===404){setSyncStatus('No inventory published on the server yet.','err');return;}
     if(!r.ok)throw new Error('inventory '+r.status);
     const data=await r.json();
+    // Wipe all local inventory state first, then load the server snapshot — same clean-replace
+    // guarantee as the Upload path, so no stale items/flags from a prior sync can ever survive.
+    // (Only runs after a successful 200 with a parsed body; a failed/304 fetch never reaches here.)
+    resetInventoryData();
     inventory=Array.isArray(data.items)?data.items:[];
     unclassified=Array.isArray(data.unclassified)?data.unclassified:[];
     const ver=r.headers.get('X-Inventory-Version')||'';
@@ -2151,14 +2158,8 @@ function init(){
     const lastPage=load(SK.page,'find');
     const slots=visiblePageOrder();
     const idx=Math.max(0,slots.indexOf(lastPage));
-    if(scroller){
-      // #page-scroll has CSS scroll-behavior:smooth (for nav-button taps), which also animates
-      // this programmatic restore — so on reload you'd see a slide from Find to the saved page.
-      // Disable smooth just for this jump, then restore it so nav taps still animate.
-      scroller.style.scrollBehavior='auto';
-      scroller.scrollLeft=idx*scroller.clientWidth;
-      requestAnimationFrame(()=>{scroller.style.scrollBehavior='';});
-    }
+    // Instant jump to the saved page — #page-scroll has no CSS smooth, so no slide-in on reload.
+    if(scroller)scroller.scrollLeft=idx*scroller.clientWidth;
     setActivePage(slots[idx]||'find');
   });
 }
