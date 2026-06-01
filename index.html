@@ -456,7 +456,9 @@ select:disabled{opacity:.3;cursor:not-allowed}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const CATEGORIES=['Suit','Jacket','Vest','Pants','Shirt','Jeans','Boys'];
-const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles',serverUrl:'gb_srv',connKey:'gb_connkey',invEtag:'gb_inv_etag',invPublished:'gb_inv_pub',invSynced:'gb_inv_synced',invSource:'gb_inv_source'};
+const SK={inventory:'gb_inv',unclassified:'gb_unc',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles',serverUrl:'gb_srv',connKey:'gb_connkey',invEtag:'gb_inv_etag',invPublished:'gb_inv_pub',invSynced:'gb_inv_synced',invSource:'gb_inv_source'};
+// Note: per-model manual classification overrides ("memory"/gb_mem) were removed — uploads now
+// classify purely via DEFAULT_RULES, and Review just moves an item to inventory for this session.
 // Default API base for local dev. Override per-device in Settings → Server Sync (set it to your
 // Tailscale Funnel hostname in production). Empty string means "same origin as the PWA".
 const DEFAULT_SERVER_URL='http://127.0.0.1:8080';
@@ -480,7 +482,6 @@ const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 
 let inventory=load(SK.inventory,[]);
 let unclassified=load(SK.unclassified,[]);
-let memory=load(SK.memory,{});
 let pickList=load(SK.picklist,[]);
 let importedFiles=load(SK.files,[]);
 // ── Multi-order pick list state ─────────────────────────────────────────────
@@ -653,7 +654,6 @@ function restoreFindState(){
 }
 
 function classifyModel(m){
-  if(memory[m])return memory[m];
   for(const r of DEFAULT_RULES){try{if(new RegExp(r.p,'i').test(m))return r.c}catch{}}
   return '__UNCLASSIFIED__';
 }
@@ -2052,7 +2052,7 @@ function selRevCat(btn,idx){
 function confirmReview(idx){
   const conf=document.getElementById(`rc-conf-${idx}`);if(!conf||!conf.dataset.cat)return;
   const cat=conf.dataset.cat,item=unclassified[idx];
-  memory[item.model]=cat;save(SK.memory,memory);item.category=cat;inventory.push(item);save(SK.inventory,inventory);
+  item.category=cat;inventory.push(item);save(SK.inventory,inventory);
   unclassified.splice(idx,1);save(SK.unclassified,unclassified);
   renderReviewNav();renderReview();renderFindPage();showToast(`${item.model} → ${cat}`);
 }
