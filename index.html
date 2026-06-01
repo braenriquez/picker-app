@@ -212,8 +212,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .fiico{font-size:1.1rem;opacity:.7;flex-shrink:0}
 .finame{flex:1;color:var(--text);font-weight:500;word-break:break-all}
 .ficnt{font-size:.68rem;color:var(--muted);white-space:nowrap}
-.firem{background:transparent;border:1px solid #3a2020;border-radius:5px;color:#665555;font-size:.75rem;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0}
-.firem:hover{background:var(--red);border-color:var(--red);color:#fff}
 .rcard{background:var(--surface);border:1px solid var(--reviewt);border-radius:10px;overflow:hidden;margin-bottom:10px;animation:fadeUp .18s ease}
 .rc-hd{background:var(--review);border-bottom:1px solid var(--border);padding:10px 14px}
 .rc-lot{font-size:.82rem;font-weight:700;color:var(--text)}
@@ -228,21 +226,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .rc-conf.ready:hover{background:var(--accent2)}
 .rc-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 12px;gap:10px}
 .rc-skip{background:transparent;border:none;color:var(--muted);font-size:.72rem;cursor:pointer;text-decoration:underline;padding:0}
-.ce-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
-.ce-row:last-child{border-bottom:none}
-.ce-model{font-size:.8rem;font-weight:600;color:var(--text);flex:1}
-.ce-sel{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.75rem;padding:5px 24px 5px 8px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;min-width:180px;width:auto}
-.ce-sel:focus{outline:none;border-color:var(--accent)}
-/* Classifications page */
-.cl-back{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.8px;cursor:pointer;padding:0;margin-bottom:18px;transition:color .15s}
-.cl-back:hover{color:var(--accent)}
-.cl-back svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.cl-section{margin-bottom:20px}
-.cl-section-hdr{font-size:.58rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px}
-.cl-section-hdr span{color:var(--text);background:var(--s3);border-radius:4px;padding:1px 6px;margin-left:6px;font-size:.6rem}
-.ce-row.ce-auto{background:rgba(106,171,255,.04);border-radius:4px;padding:8px 6px}
-.ce-rule-tag{font-size:.58rem;color:var(--bluet);background:var(--bluebg);border-radius:3px;padding:1px 5px;white-space:nowrap;flex-shrink:0}
-.cl-empty{font-size:.75rem;color:var(--muted);font-style:italic;padding:8px 0}
 .prog-wrap{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:12px;display:none}
 .prog-wrap.on{display:block}
 .prog-lbl{font-size:.75rem;color:var(--muted);margin-bottom:8px}
@@ -417,7 +400,6 @@ select:disabled{opacity:.3;cursor:not-allowed}
         <label class="sync-lbl">Connection key</label>
         <input id="sync-key" class="sync-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="xxxxxxxx.XXXXXXXXXXXXXXXXXXXX">
         <div class="sync-actions">
-          <button class="btn-o" id="sync-save">Save</button>
           <button class="btn-sync" id="sync-refresh">↻ Refresh Inventory</button>
         </div>
         <div class="sync-status" id="sync-status"></div>
@@ -474,7 +456,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const CATEGORIES=['Suit','Jacket','Vest','Pants','Shirt','Jeans','Boys'];
-const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles',serverUrl:'gb_srv',connKey:'gb_connkey',invEtag:'gb_inv_etag',invPublished:'gb_inv_pub',invSynced:'gb_inv_synced'};
+const SK={inventory:'gb_inv',unclassified:'gb_unc',memory:'gb_mem',picklist:'gb_pl',files:'gb_files',findState:'gb_fs',page:'gb_page',activeOrder:'gb_ord',orderStyles:'gb_ostyles',serverUrl:'gb_srv',connKey:'gb_connkey',invEtag:'gb_inv_etag',invPublished:'gb_inv_pub',invSynced:'gb_inv_synced',invSource:'gb_inv_source'};
 // Default API base for local dev. Override per-device in Settings → Server Sync (set it to your
 // Tailscale Funnel hostname in production). Empty string means "same origin as the PWA".
 const DEFAULT_SERVER_URL='http://127.0.0.1:8080';
@@ -1341,7 +1323,7 @@ async function refreshFromServer(){
     if(etag)headers['If-None-Match']=etag;
     const r=await fetch(base+'/api/inventory',{headers});
     if(r.status===304){
-      save(SK.invSynced,Date.now());
+      save(SK.invSynced,Date.now());save(SK.invSource,'server');
       const pub304=r.headers.get('X-Inventory-Published');if(pub304)save(SK.invPublished,Number(pub304));
       renderServerSync();setSyncStatus('Already up to date.','ok');return;
     }
@@ -1355,7 +1337,7 @@ async function refreshFromServer(){
     save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);
     const newEtag=r.headers.get('ETag');if(newEtag)save(SK.invEtag,newEtag);
     const pub=r.headers.get('X-Inventory-Published');if(pub)save(SK.invPublished,Number(pub));
-    save(SK.invSynced,Date.now());
+    save(SK.invSynced,Date.now());save(SK.invSource,'server');
     renderFileList();renderFindPage();renderReviewNav();renderServerSync();
     setSyncStatus(`Synced ${inventory.length} items${unclassified.length?`, ${unclassified.length} need review`:''}.`,'ok');
     showToast(`Synced ${inventory.length} items`);
@@ -2040,7 +2022,9 @@ function updateNavPill(){
 // ── Review ──
 function renderReviewNav(){
   const n=unclassified.length;
-  const show=n>0;
+  // Review only applies to locally-uploaded inventory. When the inventory came from the server,
+  // classification is handled admin-side, so the Review page is hidden entirely.
+  const show=load(SK.invSource,'')!=='server'&&n>0;
   document.getElementById('nav-review').style.display=show?'flex':'none';
   // Hide the review page slot from the horizontal track when there's nothing to review,
   // otherwise swipes would land on a blank page between list and settings.
@@ -2089,109 +2073,20 @@ function renderFileList(){
     fl.appendChild(div);
   });
 }
-function renderRulesEditor(){
-  const ed=document.getElementById('rules-editor');
-  const entries=Object.entries(memory);
-  if(!entries.length){ed.innerHTML='<div style="font-size:.75rem;color:var(--muted);font-style:italic">No learned classifications yet.</div>';return;}
-  ed.innerHTML='';
-  entries.sort((a,b)=>a[0].localeCompare(b[0])).forEach(([model,cat])=>{
-    const row=document.createElement('div');row.className='ce-row';
-    const opts=CATEGORIES.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('');
-    row.innerHTML=`<div><div class="ce-model">${model}</div></div><select class="ce-sel" onchange="updateMemory(this)">${opts}</select>`;
-    row.querySelector('.ce-sel').dataset.model=model;ed.appendChild(row);
-  });
+// Wipe ALL inventory state in one place so nothing stale can survive a reset. Used by the Clear
+// button AND before every file upload (upload is a clean replace, never a merge into old data).
+function resetInventoryData(){
+  inventory=[];unclassified=[];importedFiles=[];
+  save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);
+  save(SK.invEtag,'');save(SK.invPublished,'');save(SK.invSynced,'');save(SK.invSource,'');
 }
-function updateMemory(sel){
-  const model=sel.dataset.model,cat=sel.value;memory[model]=cat;save(SK.memory,memory);
-  inventory.forEach(i=>{if(i.model===model)i.category=cat;});save(SK.inventory,inventory);renderFindPage();showToast(`Updated: ${model} → ${cat}`);
-}
-function clearInventory(){inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);save(SK.invEtag,'');save(SK.invPublished,'');save(SK.invSynced,'');renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared — re-sync anytime');}
+function clearInventory(){resetInventoryData();renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared — re-sync anytime');}
 // Inventory source toggle (Server vs Upload). Server is the primary path; Upload is a fallback.
 function setInvSource(src){
   document.querySelectorAll('#src-toggle .src-opt').forEach(b=>b.classList.toggle('active',b.dataset.src===src));
   const sv=document.getElementById('src-server'),up=document.getElementById('src-upload');
   if(sv)sv.style.display=src==='upload'?'none':'';
   if(up)up.style.display=src==='upload'?'':'none';
-}
-
-// ── Classifications page ──
-function renderClassificationsPage(){
-  // Section 1: Needs Review
-  const rev=document.getElementById('cl-review-section');
-  rev.innerHTML=`<div class="cl-section-hdr">Needs Review <span>${unclassified.length}</span></div>`;
-  if(!unclassified.length){rev.innerHTML+='<div class="cl-empty">No items need review.</div>';}
-  else{
-    unclassified.forEach((item,_)=>{
-      const opts=CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('');
-      const row=document.createElement('div');row.className='ce-row';
-      row.innerHTML=`<div class="ce-model" style="color:var(--reviewt)">${item.model}<div style="font-size:.65rem;color:var(--muted)">${item.lot} · ${item.brand}</div></div><select class="ce-sel"><option value="">— assign —</option>${opts}</select>`;
-      const sel=row.querySelector('.ce-sel');
-      sel.addEventListener('change',()=>{
-        if(!sel.value)return;
-        const idx=unclassified.findIndex(u=>u.brand===item.brand&&u.lot===item.lot&&u.model===item.model);
-        if(idx<0)return;
-        classifyReviewItem(sel.value,idx);
-      });
-      rev.appendChild(row);
-    });
-  }
-  // Section 2: Learned
-  const mem=document.getElementById('cl-memory-section');
-  const memEntries=Object.entries(memory).sort((a,b)=>a[0].localeCompare(b[0]));
-  mem.innerHTML=`<div class="cl-section-hdr">Learned Classifications <span>${memEntries.length}</span></div>`;
-  if(!memEntries.length){mem.innerHTML+='<div class="cl-empty">No learned classifications yet.</div>';}
-  else{
-    memEntries.forEach(([model,cat])=>{
-      const opts=CATEGORIES.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('');
-      const row=document.createElement('div');row.className='ce-row';
-      row.innerHTML=`<div class="ce-model">${model}</div><select class="ce-sel">${opts}</select><button class="firem" title="Remove">×</button>`;
-      const sel=row.querySelector('.ce-sel');sel.dataset.model=model;
-      sel.addEventListener('change',()=>updateMemory(sel));
-      row.querySelector('.firem').addEventListener('click',()=>removeMemory(model,row));
-      mem.appendChild(row);
-    });
-  }
-  // Section 3: Auto-classified
-  const auto=document.getElementById('cl-auto-section');
-  const seen=new Set();
-  const autoItems=inventory.filter(i=>{
-    if(seen.has(i.model)||memory[i.model])return false;
-    seen.add(i.model);return true;
-  }).sort((a,b)=>a.model.localeCompare(b.model));
-  auto.innerHTML=`<div class="cl-section-hdr">Auto-classified <span>${autoItems.length}</span></div>`;
-  if(!autoItems.length){auto.innerHTML+='<div class="cl-empty">No auto-classified items.</div>';}
-  else{
-    autoItems.forEach(item=>{
-      const cat=item.category;
-      const opts=CATEGORIES.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('');
-      const rule=DEFAULT_RULES.find(r=>{try{return new RegExp(r.p,'i').test(item.model)}catch{return false}});
-      const ruleTag=rule?`<span class="ce-rule-tag">${rule.c}</span>`:'';
-      const row=document.createElement('div');row.className='ce-row ce-auto';
-      row.innerHTML=`<div class="ce-model">${item.model}${ruleTag}</div><select class="ce-sel">${opts}</select>`;
-      const sel=row.querySelector('.ce-sel');sel.dataset.model=item.model;
-      sel.addEventListener('change',()=>overrideAuto(sel));
-      auto.appendChild(row);
-    });
-  }
-}
-function classifyReviewItem(cat,idx){
-  const item=unclassified[idx];
-  memory[item.model]=cat;save(SK.memory,memory);
-  item.category=cat;inventory.push(item);save(SK.inventory,inventory);
-  unclassified.splice(idx,1);save(SK.unclassified,unclassified);
-  renderReviewNav();renderClassificationsPage();renderFindPage();
-  showToast(`${item.model} → ${cat}`);
-}
-function removeMemory(model,row){
-  delete memory[model];save(SK.memory,memory);row.remove();
-  inventory.forEach(i=>{if(i.model===model)i.category=classifyModel(model);});
-  save(SK.inventory,inventory);renderFindPage();showToast(`Removed: ${model}`);
-}
-function overrideAuto(sel){
-  const model=sel.dataset.model,cat=sel.value;
-  memory[model]=cat;save(SK.memory,memory);
-  inventory.forEach(i=>{if(i.model===model)i.category=cat;});
-  save(SK.inventory,inventory);renderFindPage();showToast(`${model} → ${cat} (learned)`);
 }
 
 function showToast(msg,bg){const t=document.getElementById('toast');t.textContent=msg;t.style.background=bg||'var(--accent)';t.classList.add('on');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('on'),2400);}
@@ -2203,9 +2098,19 @@ function init(){
   document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
   document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
   document.querySelectorAll('#src-toggle .src-opt').forEach(b=>b.addEventListener('click',()=>setInvSource(b.dataset.src)));
-  document.getElementById('sync-save').addEventListener('click',()=>saveServerCfg(true));
   document.getElementById('sync-refresh').addEventListener('click',refreshFromServer);
-  document.getElementById('file-input').addEventListener('change',async e=>{for(const f of e.target.files)await importFile(f);e.target.value='';});
+  // No separate Save button — Refresh persists the config, and we also persist on field blur so
+  // a typed URL/key isn't lost if the user navigates away before refreshing.
+  ['sync-url','sync-key'].forEach(id=>document.getElementById(id).addEventListener('change',()=>saveServerCfg(false)));
+  // Upload is a CLEAN REPLACE: wipe everything first so leftover rows from a prior server sync or
+  // a previous upload can never linger and conflict with the newly chosen files.
+  document.getElementById('file-input').addEventListener('change',async e=>{
+    const files=[...e.target.files];e.target.value='';
+    if(!files.length)return;
+    resetInventoryData();save(SK.invSource,'upload');
+    for(const f of files)await importFile(f);
+    renderReviewNav();
+  });
   // Re-balance brand/type/size-type chip rows on resize (debounced) so the equal-width,
   // max-3-per-line layout stays flush across viewport size changes.
   let _rzT;window.addEventListener('resize',()=>{clearTimeout(_rzT);_rzT=setTimeout(()=>{
