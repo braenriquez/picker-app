@@ -1534,44 +1534,63 @@ function renderFindPage(){
   document.getElementById('find-content').style.display=hasInv?'block':'none';
   if(!hasInv)return;
 
-  // Brand chips
+  // Brand chips — the brand set is constant for a session, so only (re)build when it actually
+  // differs. Rebuilding on every render recreated unstyled buttons that then got re-balanced a
+  // frame later (via rAF) — that two-step is the visible "blink". When unchanged we leave the
+  // already-balanced chips in place and just move the active highlight. (Signature cached on the
+  // row element as ._sig.)
   const brands=[...new Set(inventory.map(i=>i.brand))].sort();
-  const bcr=document.getElementById('cr-brand');bcr.innerHTML='';
-  brands.forEach(br=>{
-    const b=document.createElement('button');b.className='cb'+(F.brand===br?' active':'');b.textContent=br;
-    b.onclick=()=>{
-      if(F.brand===br)return;
-      F.brand=br;
-      const avail=[...new Set(inventory.filter(i=>i.brand===br).map(i=>i.category))].filter(c=>CATEGORIES.includes(c)).sort((a,b)=>CATEGORIES.indexOf(a)-CATEGORIES.indexOf(b));
-      if(!avail.includes(F.type))F.type=avail[0]||'';
-      F.lot='';F.style='';F.sizeType='';clearChipsAndSeed();
-      renderFindPage();
-    };
-    bcr.appendChild(b);
-  });
+  const bcr=document.getElementById('cr-brand');
+  const brandSig=brands.join('');
+  const brandsChanged=bcr._sig!==brandSig;
+  if(brandsChanged){
+    bcr._sig=brandSig;bcr.innerHTML='';
+    brands.forEach(br=>{
+      const b=document.createElement('button');b.className='cb'+(F.brand===br?' active':'');b.textContent=br;
+      b.onclick=()=>{
+        if(F.brand===br)return;
+        F.brand=br;
+        const avail=[...new Set(inventory.filter(i=>i.brand===br).map(i=>i.category))].filter(c=>CATEGORIES.includes(c)).sort((a,b)=>CATEGORIES.indexOf(a)-CATEGORIES.indexOf(b));
+        if(!avail.includes(F.type))F.type=avail[0]||'';
+        F.lot='';F.style='';F.sizeType='';clearChipsAndSeed();
+        renderFindPage();
+      };
+      bcr.appendChild(b);
+    });
+  }else{
+    [...bcr.children].forEach(b=>b.classList.toggle('active',b.textContent===F.brand));
+  }
 
-  // Type chips
+  // Type chips — depend on the selected brand, so they change when brand changes but NOT when a
+  // downstream lot/style/size is picked. Same signature guard to avoid needless rebuild + blink.
   const types=[...new Set(inventory.filter(i=>!F.brand||i.brand===F.brand).map(i=>i.category))].filter(c=>CATEGORIES.includes(c)).sort((a,b)=>CATEGORIES.indexOf(a)-CATEGORIES.indexOf(b));
-  const tcr=document.getElementById('cr-type');tcr.innerHTML='';
-  types.forEach(t=>{
-    const b=document.createElement('button');b.className='cb'+(F.type===t?' active':'');b.textContent=t;
-    b.onclick=()=>{
-      if(F.type===t)return;
-      F.type=t;
-      // Carry the lot over when the same lot exists under the new type — pickers often
-      // walk Suit → Pants → Vest within one lot. Style/sizeType/counts always reset
-      // because they're per-entry and can't be honored across types.
-      const carryLot=F.lot&&inventory.some(i=>i.brand===F.brand&&i.category===t&&i.lot===F.lot);
-      if(!carryLot)F.lot='';
-      F.style='';F.sizeType='';clearChipsAndSeed();
-      renderFindPage();
-    };
-    tcr.appendChild(b);
-  });
+  const tcr=document.getElementById('cr-type');
+  const typeSig=types.join('');
+  const typesChanged=tcr._sig!==typeSig;
+  if(typesChanged){
+    tcr._sig=typeSig;tcr.innerHTML='';
+    types.forEach(t=>{
+      const b=document.createElement('button');b.className='cb'+(F.type===t?' active':'');b.textContent=t;
+      b.onclick=()=>{
+        if(F.type===t)return;
+        F.type=t;
+        // Carry the lot over when the same lot exists under the new type — pickers often
+        // walk Suit → Pants → Vest within one lot. Style/sizeType/counts always reset
+        // because they're per-entry and can't be honored across types.
+        const carryLot=F.lot&&inventory.some(i=>i.brand===F.brand&&i.category===t&&i.lot===F.lot);
+        if(!carryLot)F.lot='';
+        F.style='';F.sizeType='';clearChipsAndSeed();
+        renderFindPage();
+      };
+      tcr.appendChild(b);
+    });
+  }else{
+    [...tcr.children].forEach(b=>b.classList.toggle('active',b.textContent===F.type));
+  }
 
-  // Balance brand + type chip rows across two lines when they don't fit on one.
-  // rAF ensures layout is committed before we measure offsetTop.
-  requestAnimationFrame(()=>{balanceChipRow(bcr);balanceChipRow(tcr);});
+  // Only (re)balance rows we actually rebuilt; untouched rows keep their committed layout.
+  // rAF ensures layout is committed before balanceChipRow measures.
+  if(brandsChanged||typesChanged)requestAnimationFrame(()=>{if(brandsChanged)balanceChipRow(bcr);if(typesChanged)balanceChipRow(tcr);});
 
   // Lot dropdown
   const sl=document.getElementById('sel-lot');
@@ -2132,7 +2151,14 @@ function init(){
     const lastPage=load(SK.page,'find');
     const slots=visiblePageOrder();
     const idx=Math.max(0,slots.indexOf(lastPage));
-    if(scroller)scroller.scrollLeft=idx*scroller.clientWidth;
+    if(scroller){
+      // #page-scroll has CSS scroll-behavior:smooth (for nav-button taps), which also animates
+      // this programmatic restore — so on reload you'd see a slide from Find to the saved page.
+      // Disable smooth just for this jump, then restore it so nav taps still animate.
+      scroller.style.scrollBehavior='auto';
+      scroller.scrollLeft=idx*scroller.clientWidth;
+      requestAnimationFrame(()=>{scroller.style.scrollBehavior='';});
+    }
     setActivePage(slots[idx]||'find');
   });
 }
