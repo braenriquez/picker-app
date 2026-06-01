@@ -1,4 +1,4 @@
-const CACHE = 'gb-v9';
+const CACHE = 'gb-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -27,10 +27,28 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  // Let Google Fonts and other cross-origin requests fall through on miss
   const url = new URL(e.request.url);
   const isSameOrigin = url.origin === self.location.origin;
 
+  // Navigation (the HTML document): NETWORK-FIRST so a fresh deploy shows up immediately —
+  // no more manual cache-version bumps to ship index.html changes. Falls back to the cached
+  // shell only when offline. We normalize the cache key to './index.html' so the precached
+  // entry and the offline fallback always line up regardless of the requested URL ('/' vs '/index.html').
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).then(response => {
+        if (response.ok && isSameOrigin) {
+          const clone = response.clone();
+          caches.open(CACHE).then(c => c.put('./index.html', clone));
+        }
+        return response;
+      }).catch(() => caches.match('./index.html').then(c => c || caches.match('./')))
+    );
+    return;
+  }
+
+  // Everything else (icons / static same-origin assets, cross-origin fonts): CACHE-FIRST for
+  // speed + offline, filling the cache on a miss. Cross-origin misses just hit the network.
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
@@ -40,12 +58,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return response;
-      }).catch(() => {
-        // Offline fallback for navigation requests
-        if (e.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
+      }).catch(() => undefined);
     })
   );
 });
