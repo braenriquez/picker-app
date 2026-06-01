@@ -194,6 +194,13 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .sync-meta-row span{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
 .sync-meta-row b{font-size:.78rem;font-weight:600;color:var(--text)}
 .sync-meta-row b.stale{color:var(--reviewt)}
+.ss-hdr-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ss-hdr-btn{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;cursor:pointer;transition:all .15s}
+.ss-hdr-btn:hover{border-color:var(--redt);color:var(--redt)}
+.src-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--s2)}
+.src-opt{flex:1;background:transparent;border:0;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:9px 8px;cursor:pointer;transition:all .15s}
+.src-opt.active{background:var(--accent);color:#1a1408}
+.src-panel{display:flex;flex-direction:column;gap:10px}
 .upzone{border:1.5px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
 .upzone:hover{border-color:var(--accent);background:rgba(200,169,110,.04)}
 .upzone .uzi{font-size:1.8rem;opacity:.4;margin-bottom:8px}
@@ -354,7 +361,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 
 <div id="page-scroll">
 <div class="page active" id="page-find">
-  <div id="no-inv"><div class="ni-icon">📦</div><p>No inventory loaded yet.<br>Go to <strong style="color:var(--accent)">Settings</strong> to upload inventory files.</p></div>
+  <div id="no-inv"><div class="ni-icon">📦</div><p>No inventory loaded yet.<br>Go to <strong style="color:var(--accent)">Settings</strong> and tap <strong style="color:var(--accent)">Refresh Inventory</strong>.</p></div>
   <div id="find-content">
     <div class="fgroup"><span class="slabel">Brand</span><div class="chip-row" id="cr-brand"></div></div>
     <div class="fgroup"><span class="slabel">Type</span><div class="chip-row" id="cr-type"></div></div>
@@ -393,63 +400,48 @@ select:disabled{opacity:.3;cursor:not-allowed}
 
 <div class="page" id="page-settings">
   <div class="ss">
-    <div class="ss-hdr">Server Sync</div>
-    <div class="ss-body">
-      <div style="font-size:.75rem;color:var(--muted)">Pull the latest inventory from your server. Get a connection key from the admin.</div>
-      <label class="sync-lbl">Server URL</label>
-      <input id="sync-url" class="sync-input" type="url" inputmode="url" autocomplete="off" placeholder="http://127.0.0.1:8080">
-      <label class="sync-lbl">Connection key</label>
-      <input id="sync-key" class="sync-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="xxxxxxxx.XXXXXXXXXXXXXXXXXXXX">
-      <div class="sync-actions">
-        <button class="btn-o" id="sync-save">Save</button>
-        <button class="btn-sync" id="sync-refresh">↻ Refresh Inventory</button>
-      </div>
-      <div class="sync-status" id="sync-status"></div>
-      <div class="sync-meta" id="sync-meta">
-        <div class="sync-meta-row"><span>Inventory dated</span><b id="sync-inv-date">—</b></div>
-        <div class="sync-meta-row"><span>Last refreshed</span><b id="sync-last">never</b></div>
-      </div>
+    <div class="ss-hdr ss-hdr-row">
+      <span>Inventory</span>
+      <button class="ss-hdr-btn" id="clear-inv-btn" title="Clear local inventory — you can re-sync anytime">Clear</button>
     </div>
-  </div>
-  <div class="ss">
-    <div class="ss-hdr">Import Inventory</div>
     <div class="ss-body">
-      <div class="prog-wrap" id="prog-wrap"><div class="prog-lbl" id="prog-lbl">Importing…</div><div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div></div>
-      <div class="upzone" id="upzone" onclick="document.getElementById('file-input').click()">
-        <div class="uzi">📂</div><div class="uzt">Tap to upload an inventory Excel file</div>
-        <div class="uzs">.xls or .xlsx — Bertolini, Giorgio Fiorelli, Carlo Lusso, Mantoni, Enzo</div>
+      <div class="src-toggle" id="src-toggle">
+        <button class="src-opt active" data-src="server">Server</button>
+        <button class="src-opt" data-src="upload">Upload file</button>
       </div>
-      <input type="file" id="file-input" accept=".xls,.xlsx" multiple>
-      <div class="flist" id="flist"></div>
-    </div>
-  </div>
-  <div class="ss">
-    <div class="ss-hdr">Classifications</div>
-    <div class="ss-body">
-      <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">View and edit how every model number is categorized — including auto-classified items.</div>
-      <button class="btn-o" style="width:100%;padding:10px" onclick="showPage('classifications')">Edit All Classifications →</button>
-    </div>
-  </div>
-  <div class="ss">
-    <div class="ss-hdr">Danger Zone</div>
-    <div class="ss-body">
-      <div class="ss-row"><div><div class="ss-lbl">Clear All Inventory</div><div class="ss-sub">Remove all imported data. Files need re-uploading.</div></div><button class="btn-d" id="clear-inv-btn">Clear Inventory</button></div>
+
+      <div class="src-panel" id="src-server">
+        <div style="font-size:.75rem;color:var(--muted)">Pull the latest inventory from your server. Get a connection key from the admin.</div>
+        <label class="sync-lbl">Server URL</label>
+        <input id="sync-url" class="sync-input" type="url" inputmode="url" autocomplete="off" placeholder="http://127.0.0.1:8080">
+        <label class="sync-lbl">Connection key</label>
+        <input id="sync-key" class="sync-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="xxxxxxxx.XXXXXXXXXXXXXXXXXXXX">
+        <div class="sync-actions">
+          <button class="btn-o" id="sync-save">Save</button>
+          <button class="btn-sync" id="sync-refresh">↻ Refresh Inventory</button>
+        </div>
+        <div class="sync-status" id="sync-status"></div>
+        <div class="sync-meta" id="sync-meta">
+          <div class="sync-meta-row"><span>Inventory dated</span><b id="sync-inv-date">—</b></div>
+          <div class="sync-meta-row"><span>Last refreshed</span><b id="sync-last">never</b></div>
+        </div>
+      </div>
+
+      <div class="src-panel" id="src-upload" style="display:none">
+        <div style="font-size:.72rem;color:var(--muted)">Fallback only — load an Excel file directly onto this device. Normally the server is the source.</div>
+        <div class="prog-wrap" id="prog-wrap"><div class="prog-lbl" id="prog-lbl">Importing…</div><div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div></div>
+        <div class="upzone" id="upzone" onclick="document.getElementById('file-input').click()">
+          <div class="uzi">📂</div><div class="uzt">Tap to upload an inventory Excel file</div>
+          <div class="uzs">.xls or .xlsx — Bertolini, Giorgio Fiorelli, Carlo Lusso, Mantoni, Enzo</div>
+        </div>
+        <input type="file" id="file-input" accept=".xls,.xlsx" multiple>
+        <div class="flist" id="flist"></div>
+      </div>
     </div>
   </div>
 </div>
 
 </div><!-- end #page-scroll -->
-
-<!-- Classifications is a detail page accessed from Settings, not a swipe slot. It lives
-     outside the horizontal-scroll row and shows as a fullscreen overlay when active. -->
-<div class="page-overlay" id="page-classifications">
-  <button class="cl-back" onclick="showPage('settings')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Back to Settings</button>
-  <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--accent);margin-bottom:4px">Classifications</div>
-  <div style="font-size:.72rem;color:var(--muted);margin-bottom:18px">All model numbers and their assigned categories. Items in the <span style="color:var(--reviewt)">Needs Review</span> section have not been confirmed yet.</div>
-  <div id="cl-review-section" class="cl-section"></div>
-  <div id="cl-memory-section" class="cl-section"></div>
-  <div id="cl-auto-section" class="cl-section"></div>
-</div>
 
 <!-- Bottom action bar: Aisle + In Stock (auto-sized, flex:0) and Add button (flex:1).
      The button text adapts down a priority list to whatever fits the leftover space. -->
@@ -1444,13 +1436,6 @@ function setActivePage(which){
 }
 
 function showPage(which){
-  const overlay=document.getElementById('page-classifications');
-  if(which==='classifications'){
-    renderClassificationsPage();
-    overlay.classList.add('on');
-    return;
-  }
-  overlay.classList.remove('on');
   const slots=visiblePageOrder();
   const idx=slots.indexOf(which);
   if(idx<0)return;
@@ -2120,7 +2105,14 @@ function updateMemory(sel){
   const model=sel.dataset.model,cat=sel.value;memory[model]=cat;save(SK.memory,memory);
   inventory.forEach(i=>{if(i.model===model)i.category=cat;});save(SK.inventory,inventory);renderFindPage();showToast(`Updated: ${model} → ${cat}`);
 }
-function clearInventory(){if(!confirm('Clear all imported inventory? Files will need re-uploading.'))return;inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);save(SK.invEtag,'');save(SK.invPublished,'');save(SK.invSynced,'');renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared');}
+function clearInventory(){inventory=[];unclassified=[];importedFiles=[];save(SK.inventory,inventory);save(SK.unclassified,unclassified);save(SK.files,importedFiles);save(SK.invEtag,'');save(SK.invPublished,'');save(SK.invSynced,'');renderFindPage();renderReviewNav();renderSettings();showToast('Inventory cleared — re-sync anytime');}
+// Inventory source toggle (Server vs Upload). Server is the primary path; Upload is a fallback.
+function setInvSource(src){
+  document.querySelectorAll('#src-toggle .src-opt').forEach(b=>b.classList.toggle('active',b.dataset.src===src));
+  const sv=document.getElementById('src-server'),up=document.getElementById('src-upload');
+  if(sv)sv.style.display=src==='upload'?'none':'';
+  if(up)up.style.display=src==='upload'?'':'none';
+}
 
 // ── Classifications page ──
 function renderClassificationsPage(){
@@ -2210,6 +2202,7 @@ function init(){
   document.getElementById('add-btn').addEventListener('click',onAddToList);
   document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
   document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
+  document.querySelectorAll('#src-toggle .src-opt').forEach(b=>b.addEventListener('click',()=>setInvSource(b.dataset.src)));
   document.getElementById('sync-save').addEventListener('click',()=>saveServerCfg(true));
   document.getElementById('sync-refresh').addEventListener('click',refreshFromServer);
   document.getElementById('file-input').addEventListener('change',async e=>{for(const f of e.target.files)await importFile(f);e.target.value='';});
