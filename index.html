@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f0f0f">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Gruppo Bravo">
@@ -25,7 +27,9 @@
   --nav-h:62px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%;height:-webkit-fill-available}
+/* color-scheme:dark tells the OS/Chrome to paint system surfaces (incl. the Android bottom
+   gesture-nav bar) dark instead of defaulting to white; html bg fills the canvas behind insets. */
+html{height:100%;height:-webkit-fill-available;background:var(--bg);color-scheme:dark}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;height:100%;height:100svh;overflow:hidden;overflow-x:hidden;display:flex;flex-direction:column}
 /* Merged top bar — brand + inline nav. Height held flat by padding + gap so header stays
    compact even with icons+labels in the buttons. */
