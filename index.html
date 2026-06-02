@@ -61,7 +61,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
    whose full-width option panel opens below this row; .fg-lotstyle is the positioning context. */
 .fg-lotstyle{display:flex;gap:10px;margin-bottom:18px;align-items:flex-end;position:relative}
 .fg-lotstyle .fgroup{margin-bottom:0;min-width:0}
-.fg-lotstyle .ls-lot{flex:1 1 0;min-width:0}
+.fg-lotstyle .ls-lot{flex:1 1 0;min-width:0;transition:flex-basis .18s ease}
 .fg-lotstyle .ls-style{flex:2 1 0;min-width:0}
 /* Custom Lot/Style dropdowns — a full-width panel anchored below the row, so mobile doesn't hand
    off to the OS full-screen picker. Trigger mimics the old <select>; panel floats over content. */
@@ -72,7 +72,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
 .dd-val.placeholder{color:var(--muted)}
 .dd-chev{width:12px;height:8px;flex-shrink:0;stroke:var(--muted);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s}
 .dd-trigger.open .dd-chev{transform:rotate(180deg)}
-.dd-panel{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:60;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);max-height:min(50vh,360px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:ddIn .14s ease}
+/* Fixed so it can stretch from just below the row (top set in JS) to the bottom of the screen. */
+.dd-panel{position:fixed;z-index:200;bottom:calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:ddIn .14s ease}
 .dd-panel[hidden]{display:none}
 @keyframes ddIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .dd-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;font-size:.95rem;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border)}
@@ -1525,6 +1526,7 @@ function setDropdown(id,opts,value,placeholder,disabled){
   const valEl=document.getElementById('dd-'+id+'-val');
   valEl.textContent=sel?(id==='lot'?(truncateLot(sel.value)||sel.label):sel.label):placeholder;
   valEl.classList.toggle('placeholder',!sel);
+  if(id==='lot')fitLotColumn(); // widen Lot column to show the full selected lot number
   if(ddOpen===id)renderDDPanel(id); // refresh an already-open panel after a re-render
 }
 function renderDDPanel(id){
@@ -1548,6 +1550,7 @@ function openDD(id){
   ddOpen=id;trig.classList.add('open');trig.setAttribute('aria-expanded','true');
   renderDDPanel(id);
   const panel=document.getElementById('dd-panel');panel.hidden=false;
+  positionDD();
   const sel=panel.querySelector('.dd-opt.sel');if(sel)sel.scrollIntoView({block:'nearest'});
 }
 function closeDD(){
@@ -1557,6 +1560,35 @@ function closeDD(){
   document.getElementById('dd-panel').hidden=true;ddOpen=null;
 }
 function toggleDD(id){ddOpen===id?closeDD():openDD(id);}
+// Anchor the open panel just below the Lot/Style row, full row width, stretching to the bottom of
+// the screen (CSS sets `bottom`). Re-runs on scroll/resize so it stays glued while open.
+function positionDD(){
+  if(!ddOpen)return;
+  const row=document.querySelector('.fg-lotstyle').getBoundingClientRect();
+  const p=document.getElementById('dd-panel');
+  p.style.top=(row.bottom+6)+'px';p.style.left=row.left+'px';p.style.width=row.width+'px';
+}
+// Fast canvas text measurement (reused single context).
+function measureTextPx(text,fontCss){
+  const c=measureTextPx._c||(measureTextPx._c=document.createElement('canvas'));
+  const ctx=c.getContext('2d');ctx.font=fontCss;return ctx.measureText(text).width;
+}
+// Widen the Lot column to fit the full (parens-stripped) lot number after selection, so it stays
+// readable while picking sizes. Resets to the default 1:2 ratio when nothing is selected; capped
+// so the Style column keeps a usable minimum width.
+function fitLotColumn(){
+  const wrap=document.querySelector('.fg-lotstyle .ls-lot');
+  const container=document.querySelector('.fg-lotstyle');
+  const valEl=document.getElementById('dd-lot-val');
+  if(!wrap||!container||!valEl)return;
+  if(!F.lot){wrap.style.flex='';return;}
+  const cs=getComputedStyle(valEl);
+  const fontCss=`${cs.fontStyle||'normal'} ${cs.fontWeight||'400'} ${cs.fontSize} ${cs.fontFamily}`;
+  const needed=Math.ceil(measureTextPx(valEl.textContent,fontCss)+48); // + trigger chrome (padding+gap+chevron+border)
+  const MIN_STYLE=120,GAP=10;
+  const maxLot=Math.max(80,container.clientWidth-MIN_STYLE-GAP);
+  wrap.style.flex=`0 0 ${Math.min(needed,maxLot)}px`;
+}
 
 // ── Find page ──
 function renderFindPage(){
@@ -2140,6 +2172,9 @@ function init(){
     closeDD();
   },true);
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDD();});
+  // Keep the open panel glued below the row when the page scrolls or the viewport resizes.
+  window.addEventListener('scroll',positionDD,true);
+  window.addEventListener('resize',positionDD);
   document.getElementById('add-btn').addEventListener('click',onAddToList);
   document.getElementById('clear-list-btn').addEventListener('click',clearPickList);
   document.getElementById('clear-inv-btn').addEventListener('click',clearInventory);
@@ -2163,6 +2198,7 @@ function init(){
     balanceChipRow(document.getElementById('cr-brand'));
     balanceChipRow(document.getElementById('cr-type'));
     balanceChipRow(document.getElementById('cr-sizetype'));
+    fitLotColumn();   // recompute Lot column width for the new viewport
     fitAddBtnText();  // re-pick button text based on new available width
   },120);});
   restoreFindState();
