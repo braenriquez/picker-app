@@ -1551,7 +1551,9 @@ function openDD(id){
   renderDDPanel(id);
   const panel=document.getElementById('dd-panel');panel.hidden=false;
   positionDD();
-  const sel=panel.querySelector('.dd-opt.sel');if(sel)sel.scrollIntoView({block:'nearest'});
+  const sel=panel.querySelector('.dd-opt.sel');
+  if(sel)sel.scrollIntoView({block:'nearest'}); // a selection exists → reveal it (remembered feel)
+  else panel.scrollTop=0; // nothing selected (e.g. just switched brand) → start at the very top
 }
 function closeDD(){
   if(!ddOpen)return;
