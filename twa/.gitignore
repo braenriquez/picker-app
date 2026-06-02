@@ -1,0 +1,27 @@
+# NEVER commit the signing key — losing it means you can't update the app; leaking it lets
+# anyone sign as you.
+*.keystore
+*.jks
+android.keystore
+
+# Build artifacts + the Bubblewrap-generated Android project (all regenerable from twa-manifest.json)
+*.apk
+*.aab
+app/
+.gradle/
+build/
+gradle/
+gradlew
+gradlew.bat
+build.gradle
+settings.gradle
+gradle.properties
+store_icon.png
+*.png.bak
+twa-manifest.json.bak
+node_modules/
+.bubblewrap/
+
+# Bubblewrap emits this after a build (it carries your key fingerprint) — we publish it to the
+# braenriquez.github.io repo, not here.
+assetlinks.json
