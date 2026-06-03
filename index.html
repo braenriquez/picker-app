@@ -29,7 +29,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 /* color-scheme:dark tells the OS/Chrome to paint system surfaces (incl. the Android bottom
    gesture-nav bar) dark instead of defaulting to white; html bg fills the canvas behind insets. */
-html{height:100%;height:-webkit-fill-available;background:var(--bg);color-scheme:dark}
+html{height:100%;height:-webkit-fill-available;background:var(--bg);color-scheme:dark;--sab:env(safe-area-inset-bottom,0px)}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;height:100%;height:100svh;overflow:hidden;overflow-x:hidden;display:flex;flex-direction:column}
 /* Merged top bar — brand + inline nav. Height held flat by padding + gap so header stays
    compact even with icons+labels in the buttons. */
@@ -76,8 +76,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
 .dd-val.placeholder{color:var(--muted)}
 .dd-chev{width:12px;height:8px;flex-shrink:0;stroke:var(--muted);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s}
 .dd-trigger.open .dd-chev{transform:rotate(180deg)}
-/* Fixed so it can stretch from just below the row (top set in JS) to the bottom of the screen. */
-.dd-panel{position:fixed;z-index:200;bottom:calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:ddIn .14s ease}
+/* Fixed; top + max-height set in JS (positionDD). The panel sizes to its content but never grows
+   past the bottom of the screen — short lists stay compact, long lists fill down and scroll. */
+.dd-panel{position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:ddIn .14s ease}
 .dd-panel[hidden]{display:none}
 @keyframes ddIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .dd-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;font-size:.95rem;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border)}
@@ -1566,13 +1567,17 @@ function closeDD(){
   document.getElementById('dd-panel').hidden=true;ddOpen=null;
 }
 function toggleDD(id){ddOpen===id?closeDD():openDD(id);}
-// Anchor the open panel just below the Lot/Style row, full row width, stretching to the bottom of
-// the screen (CSS sets `bottom`). Re-runs on scroll/resize so it stays glued while open.
+// Anchor the open panel just below the Lot/Style row at full row width. Height = its content,
+// capped at the space remaining down to the bottom of the screen (minus the safe-area inset) so a
+// short list stays compact while a long one fills the space and scrolls. Re-runs on scroll/resize.
 function positionDD(){
   if(!ddOpen)return;
   const row=document.querySelector('.fg-lotstyle').getBoundingClientRect();
   const p=document.getElementById('dd-panel');
-  p.style.top=(row.bottom+6)+'px';p.style.left=row.left+'px';p.style.width=row.width+'px';
+  const top=row.bottom+6;
+  const sab=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab'))||0;
+  p.style.top=top+'px';p.style.left=row.left+'px';p.style.width=row.width+'px';
+  p.style.maxHeight=Math.max(120,window.innerHeight-top-sab-10)+'px';
 }
 // Fast canvas text measurement (reused single context).
 function measureTextPx(text,fontCss){
