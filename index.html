@@ -293,7 +293,7 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .op-title{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:1.8px;color:var(--accent)}
 .op-sub{font-size:.6rem;color:var(--muted);margin-top:1px;letter-spacing:.4px}
 .op-list{padding:2px 10px;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:200px}
-.op-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent;border-left:3px solid var(--ocolor,transparent)}
+.op-row{position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent;border-left:3px solid var(--ocolor,transparent)}
 .op-row:hover{background:var(--s2)}
 .op-row.active{background:var(--accentbg);border-color:var(--accent);border-left-color:var(--ocolor,var(--accent))}
 .op-row .oname{font-size:.88rem;font-weight:600;color:var(--text);flex:1}
@@ -301,6 +301,16 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .op-row.none .oname{color:var(--muted);font-style:italic}
 .op-row .opdel{background:transparent;border:1px solid #3a2020;border-radius:5px;color:#665555;font-size:.85rem;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;padding:0;line-height:1;font-family:'DM Sans',sans-serif}
 .op-row .opdel:hover{background:var(--red);border-color:var(--red);color:#fff}
+/* Inline delete confirm — slides down over the row in place of the system dialog. */
+.op-confirm{position:absolute;inset:0;display:flex;align-items:center;gap:7px;padding:5px 8px 5px 10px;background:var(--s2);transform:translateY(-101%);opacity:0;pointer-events:none;transition:transform .18s ease,opacity .18s ease}
+.op-row.confirming{overflow:hidden}
+.op-row.confirming .op-confirm{transform:translateY(0);opacity:1;pointer-events:auto}
+.op-confirm .opc-msg{flex:1;min-width:0;font-size:.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-confirm button{border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.2px;padding:6px 12px;cursor:pointer;flex-shrink:0;line-height:1;transition:all .15s}
+.opc-cancel{background:transparent;border:1px solid var(--border2);color:var(--muted)}
+.opc-cancel:hover{border-color:var(--text);color:var(--text)}
+.opc-del{background:var(--red);border:1px solid var(--red);color:#fff}
+.opc-del:hover{background:#a82828;border-color:#a82828}
 .op-new{padding:9px 12px 11px;border-top:1px solid var(--border);display:flex;gap:8px}
 .op-new input{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:8px 11px;outline:none;transition:border-color .15s;min-width:0}
 .op-new input:focus{border-color:var(--accent)}
@@ -601,7 +611,7 @@ function renderOrderPickerList(){
     const cnt=count?`<span class="ocount-mini">${count}</span>`:'';
     const isActive=label===activeOrder?'active':'';
     const safe=escapeAttr(label);
-    html+=`<div class="op-row ${isActive}${orderColorClass(label)}" data-order="${safe}" role="button" tabindex="0"><span class="oname">${safe}</span>${cnt}<button class="opdel" data-order="${safe}" aria-label="Remove order ${safe}" title="Remove this order from the pick list">×</button></div>`;
+    html+=`<div class="op-row ${isActive}${orderColorClass(label)}" data-order="${safe}" role="button" tabindex="0"><span class="oname">${safe}</span>${cnt}<button class="opdel" data-order="${safe}" aria-label="Remove order ${safe}" title="Remove this order from the pick list">×</button><div class="op-confirm"><span class="opc-msg">Remove “${safe}”?</span><button class="opc-cancel" type="button">Cancel</button><button class="opc-del" type="button">Remove</button></div></div>`;
   });
   list.innerHTML=html;
   list.querySelectorAll('.op-row[data-order]').forEach(el=>{
@@ -609,8 +619,17 @@ function renderOrderPickerList(){
     el.onclick=fire;
     el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fire();}};
   });
-  list.querySelectorAll('.opdel[data-order]').forEach(el=>{
-    el.onclick=e=>{e.stopPropagation();deleteOrder(el.dataset.order);};
+  list.querySelectorAll('.op-row[data-order]').forEach(row=>{
+    const del=row.querySelector('.opdel');
+    if(del)del.onclick=e=>{e.stopPropagation();
+      // Close any other row's confirm, then open this one in place.
+      list.querySelectorAll('.op-row.confirming').forEach(r=>{if(r!==row)r.classList.remove('confirming');});
+      row.classList.add('confirming');
+    };
+    const cancel=row.querySelector('.opc-cancel');
+    if(cancel)cancel.onclick=e=>{e.stopPropagation();row.classList.remove('confirming');};
+    const conf=row.querySelector('.opc-del');
+    if(conf)conf.onclick=e=>{e.stopPropagation();deleteOrder(row.dataset.order);};
   });
 }
 function addNewOrder(){
@@ -625,7 +644,7 @@ function addNewOrder(){
   closeOrderPicker();
 }
 function deleteOrder(label){
-  if(!confirm(`Remove order "${label}" and all its items from the pick list?`))return;
+  // Confirmation is handled inline on the row (see renderOrderPickerList) — no system dialog.
   pickList=pickList.filter(p=>(p.order||'')!==label);
   save(SK.picklist,pickList);
   if(activeOrder===label)setActiveOrder('');
