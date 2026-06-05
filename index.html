@@ -257,9 +257,12 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .prow.has-order::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--row-edge,transparent);pointer-events:none}
 .prow.o1{--row-edge:#5b8def}.prow.o2{--row-edge:#f0a830}.prow.o3{--row-edge:#6dca6d}.prow.o4{--row-edge:#e85a5a}
 .prow.o5{--row-edge:#b078e8}.prow.o6{--row-edge:#4dc7d0}.prow.o7{--row-edge:#f06a3a}.prow.o8{--row-edge:#e87fb4}
+.prow.has-order.ouns{--row-edge:#6e6e6e}
 /* Order palette — used for left-edge color borders on chips/rows/tags. */
 .has-ocolor.o1{--ocolor:#5b8def}.has-ocolor.o2{--ocolor:#f0a830}.has-ocolor.o3{--ocolor:#6dca6d}.has-ocolor.o4{--ocolor:#e85a5a}
 .has-ocolor.o5{--ocolor:#b078e8}.has-ocolor.o6{--ocolor:#4dc7d0}.has-ocolor.o7{--ocolor:#f06a3a}.has-ocolor.o8{--ocolor:#e87fb4}
+/* Neutral "Unassigned" slot — loose, untagged items once real orders exist. */
+.has-ocolor.ouns{--ocolor:#6e6e6e}
 /* Lot-section header: small inline tag showing which order this lot block belongs to. */
 .lsh-order{display:inline-flex;align-items:center;background:var(--s3);border-radius:4px;padding:2px 8px;margin-left:auto;margin-right:8px;border-left:3px solid var(--ocolor,var(--border2))}
 .lsh-order .oname{font-size:.62rem;font-weight:700;color:var(--text);letter-spacing:.3px;line-height:1}
@@ -317,6 +320,16 @@ select:disabled{opacity:.3;cursor:not-allowed}
 .op-new button{background:var(--accent);border:none;border-radius:8px;color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:1.4px;padding:0 16px;cursor:pointer;transition:background .15s;flex-shrink:0}
 .op-new button:hover{background:var(--accent2)}
 .op-new button:disabled{opacity:.4;cursor:not-allowed}
+/* Adopt prompt — offered when the first order is created while loose items exist. */
+.op-adopt{margin:0 12px 10px;padding:9px 11px;background:var(--s2);border:1px solid var(--border2);border-left:3px solid #6e6e6e;border-radius:8px;display:flex;flex-direction:column;gap:8px}
+.op-adopt[hidden]{display:none}
+.opa-msg{font-size:.78rem;color:var(--text);line-height:1.3}
+.opa-actions{display:flex;gap:8px;justify-content:flex-end}
+.op-adopt button{border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.2px;padding:6px 13px;cursor:pointer;line-height:1;transition:all .15s}
+.opa-keep{background:transparent;border:1px solid var(--border2);color:var(--muted)}
+.opa-keep:hover{border-color:var(--text);color:var(--text)}
+.opa-add{background:var(--accent);border:1px solid var(--accent);color:var(--bg)}
+.opa-add:hover{background:var(--accent2);border-color:var(--accent2)}
 @media print{
   .hdr,.tactions,.rbtn,.add-btn-zone,#page-find,#page-review,#page-settings,.page-overlay,#order-drawer,.order-handle{display:none!important}
   #page-scroll{display:block!important;overflow:visible!important}
@@ -474,6 +487,13 @@ select:disabled{opacity:.3;cursor:not-allowed}
       </div>
     </div>
     <div class="op-list" id="op-list"></div>
+    <div class="op-adopt" id="op-adopt" hidden>
+      <span class="opa-msg" id="opa-msg"></span>
+      <div class="opa-actions">
+        <button type="button" class="opa-keep" id="opa-keep">Keep separate</button>
+        <button type="button" class="opa-add" id="opa-add">Add them</button>
+      </div>
+    </div>
     <form class="op-new" id="op-new-form" onsubmit="event.preventDefault();addNewOrder()">
       <input id="op-new-input" type="text" placeholder="New order label (e.g. 42, Smith)" maxlength="20" autocomplete="off">
       <button type="submit" id="op-new-btn">Add</button>
@@ -580,6 +600,7 @@ function toggleOrderDrawer(){
 }
 function openOrderPicker(){
   renderOrderPickerList();
+  const ad=document.getElementById('op-adopt');if(ad)ad.hidden=true; // clear any stale adopt prompt
   const d=document.getElementById('order-drawer');if(!d)return;
   d.classList.add('on');
   const handle=document.getElementById('order-handle');if(handle){handle.classList.add('open');handle.setAttribute('aria-expanded','true');}
@@ -636,12 +657,32 @@ function addNewOrder(){
   const inp=document.getElementById('op-new-input');if(!inp)return;
   const label=(inp.value||'').trim().replace(/^#\s*/,'').slice(0,20);
   if(!label)return;
+  // Snapshot before mutating: was this the first order, and were there loose items?
+  const priorOrders=listOrderLabels().filter(l=>l!=='').length;
+  const untaggedCount=pickList.filter(p=>!(p.order||'')).length;
   orderStyle(label); // assign palette slot now so the color shows immediately
   setActiveOrder(label);
   inp.value='';
   renderOrderPickerList();
   renderPickList();
+  // Solution B: creating the FIRST order while loose items exist — offer to adopt
+  // them into it. Keep the drawer open so the choice is in context.
+  if(priorOrders===0&&untaggedCount>0){promptAdoptUntagged(label,untaggedCount);return;}
   closeOrderPicker();
+}
+// Inline "add your existing items to this order?" prompt shown in the drawer.
+function promptAdoptUntagged(label,count){
+  const banner=document.getElementById('op-adopt');if(!banner)return;
+  document.getElementById('opa-msg').textContent=`Add your ${count} existing item${count!==1?'s':''} to “${label}”?`;
+  banner.hidden=false;
+  document.getElementById('opa-add').onclick=()=>{
+    pickList.forEach(p=>{if(!(p.order||''))p.order=label;});
+    save(SK.picklist,pickList);
+    banner.hidden=true;
+    renderPickList();
+    closeOrderPicker();
+  };
+  document.getElementById('opa-keep').onclick=()=>{banner.hidden=true;closeOrderPicker();};
 }
 function deleteOrder(label){
   // Confirmation is handled inline on the row (see renderOrderPickerList) — no system dialog.
@@ -1985,6 +2026,11 @@ function renderPickList(){
   // the picklist (or the active order isn't yet represented). Tapping a chip
   // toggles activeOrder so subsequent adds inherit that label.
   const labels=listOrderLabels().filter(l=>l!=='');
+  const untaggedCount=pickList.filter(p=>!(p.order||'')).length;
+  // Once any order context exists (a tagged order, or an active label), loose
+  // items become a labeled neutral "Unassigned" group rather than looking
+  // orphaned next to colored rows.
+  const showUnassigned=untaggedCount>0&&(labels.length>0||activeOrder!=='');
   if(labels.length||activeOrder){
     html+='<div class="olegend"><span class="olegend-lbl">Orders</span>';
     const allLabels=[...labels];
@@ -1995,6 +2041,10 @@ function renderPickList(){
       const safe=escapeAttr(label);
       html+=`<button class="olegend-chip${isActive}${orderColorClass(label)}" data-order="${safe}" type="button"><span class="oname">${safe}</span><span class="ocount-mini">${count}</span></button>`;
     });
+    if(showUnassigned){
+      const isActive=activeOrder===''?' active':'';
+      html+=`<button class="olegend-chip has-ocolor ouns${isActive}" data-order="" type="button"><span class="oname">Unassigned</span><span class="ocount-mini">${untaggedCount}</span></button>`;
+    }
     html+='</div>';
   }
   // 6 header cells to match the 6-column .prow grid (col 4 is the flexible spacer).
@@ -2010,10 +2060,11 @@ function renderPickList(){
       const fh=rep.flag?`<span class="fbadge f${rep.flag}">${rep.flag}</span>`:'';
       const ord=rep.order||'';
       const safeOrd=escapeAttr(ord);
-      const ordTag=ord?`<span class="lsh-order${orderColorClass(ord)}"><span class="oname">${safeOrd}</span></span>`:'';
+      const ordTag=ord?`<span class="lsh-order${orderColorClass(ord)}"><span class="oname">${safeOrd}</span></span>`
+        :(showUnassigned?`<span class="lsh-order has-ocolor ouns"><span class="oname">Unassigned</span></span>`:'');
       html+=`<div class="lsg"><div class="lsh" role="button" tabindex="0" data-lot="${escapeAttr(rep.lot)}" data-model="${escapeAttr(rep.model)}" data-order="${safeOrd}" aria-label="Edit ${escapeAttr(rep.lot)} ${escapeAttr(rep.model)}${ord?(' for order '+safeOrd):''}">${fh}<span class="lshlot">${rep.lot}</span><span class="lshmod">— ${rep.model}</span>${ordTag}<span class="lshchev" aria-hidden="true">›</span></div>`;
       const oi=orderStyle(ord);
-      const rowClasses='prow'+(oi?` has-order o${oi}`:'');
+      const rowClasses='prow'+(oi?` has-order o${oi}`:(showUnassigned?' has-order ouns':''));
       items.forEach(item=>{
         const oc=item.ordered>0?'ocount hc':'ocount',ol=item.ordered>0?item.ordered:'—';
         const tl=TL[item.sizeType]||item.sizeType;
