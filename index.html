@@ -78,7 +78,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
 .dd-trigger.open .dd-chev{transform:rotate(180deg)}
 /* Fixed; top + max-height set in JS (positionDD). The panel sizes to its content but never grows
    past the bottom of the screen — short lists stay compact, long lists fill down and scroll. */
-.dd-panel{position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:ddIn .14s ease}
+/* transform:translateZ(0) forces the panel onto its own composited layer permanently. Without it,
+   the panel only composites during the ddIn animation, then drops back to a plain layer — and
+   WebKit/iOS Safari then paints the composited .add-btn-zone (will-change:transform) ON TOP of it
+   regardless of z-index, so the panel opens behind the Add button. Keeping it composited makes
+   Safari honor the z-index. Chromium isn't affected. */
+.dd-panel{position:fixed;z-index:200;transform:translateZ(0);background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:ddIn .14s ease}
 .dd-panel[hidden]{display:none}
 @keyframes ddIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .dd-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;font-size:.95rem;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border)}
