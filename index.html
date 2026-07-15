@@ -812,6 +812,12 @@ function extractSizes(hdr,row,s,e){
   return out;
 }
 function findTTLCol(hdr){for(let i=0;i<hdr.length;i++){const s=String(hdr[i]||'').trim().toUpperCase();if(s==='TTL'||s==='TOTAL')return i;}return -1;}
+// Sheets gain size sub-header rows above the real "LOT #" header over time (a letter-size row
+// appeared in MANTONI SUITS in 7/2026, shifting the header 6 -> 7), so anchor on the row itself.
+function findHeaderRow(raw,dflt,limit=15){for(let i=0;i<Math.min(limit,raw.length);i++){const row=raw[i];if(row&&String(row[0]||'').trim().toUpperCase()==='LOT #')return i;}return dflt;}
+function findSectionRow(raw,hdrRow,dflt){for(let i=hdrRow-1;i>=0;i--){const row=raw[i];if(!row)continue;let hasShort=false,hasLong=false;for(const v of row){const s=String(v||'').trim().toUpperCase();if(s==='SHORT')hasShort=true;else if(s==='LONG')hasLong=true;}if(hasShort&&hasLong)return i;}return dflt;}
+// Optional letter-size sub-header (S/M/L/XL/2XL/3XL); only present once the sheet carries vest rows.
+function findLetterSubHdr(raw,hdrRow,secRow){const LETTER=/^(?:XS|S|M|L|XL|[2-5]XL)$/i;for(let i=hdrRow-1;i>secRow;i--){const row=raw[i];if(!row)continue;let hits=0;for(const v of row){if(v!=null&&LETTER.test(String(v).trim()))hits++;}if(hits>=3)return row;}return null;}
 
 function normalizeAisle(v){
   if(v==null)return null;
@@ -1077,22 +1083,33 @@ function parseGiorgioPants(raw){
 }
 
 function parseMantoniSuits(raw){
-  const secR=raw[4]||[],shortSubHdr=raw[5]||[],hdr=raw[6]||[];
+  // Boys sub-header sits directly above the header row, data directly below, however many
+  // other sub-header rows (e.g. the letter-size row) precede them.
+  const hdrRow=findHeaderRow(raw,6);
+  const secRow=findSectionRow(raw,hdrRow,4);
+  const secR=raw[secRow]||[],shortSubHdr=raw[hdrRow-1]||[],hdr=raw[hdrRow]||[];
+  const letterHdr=findLetterSubHdr(raw,hdrRow,secRow);
   let shortS=19,longS=35,aisleC=50,shipC=52;
   secR.forEach((v,i)=>{const s=String(v||'').toUpperCase();if(s==='SHORT'&&i>10)shortS=i;if(s==='LONG'&&i>20)longS=i;if(s==='AISLE'||s==='#')aisleC=i;});
   longS--; // "LONG" label in row 4 is one column right of size 38 in row 6
   const ttlC=findTTLCol(hdr);
   const items=[];
-  for(let i=7;i<raw.length;i++){
+  for(let i=hdrRow+1;i<raw.length;i++){
     const row=raw[i];if(!row)continue;
     const lot=String(row[0]||'').trim();if(!lot||lot.startsWith('='))continue;
     const flag=String(row[1]||'').trim()||null;
     const model=String(row[2]||'').trim();if(isSkip(model))continue;
-    const cat=classifyModel(model);if(cat==='__SKIP__')continue;
+    let cat=classifyModel(model);if(cat==='__SKIP__')continue;if(cat==='__UNCLASSIFIED__'&&/vest/i.test(model))cat='Vest';
     const sys=getSizeSystem(model);
     const aisle=normalizeAisle(row[aisleC]);
     const ttl=ttlC>=0?safeInt(row[ttlC])||null:null;
     const base={lot,flag:flag==='None'?null:flag,model,brand:'Mantoni',category:cat,aisle,shipdate:String(row[shipC]||''),ttl,sizeSystem:sys};
+    // Most vests here are numeric and fill the REGULAR span. A letter-sized vest instead fills only
+    // the letter sub-header's columns — which overlap SHORT, so an empty REGULAR tells them apart.
+    if(cat==='Vest'&&letterHdr&&!Object.keys(extractSizes(hdr,row,3,shortS-1)).length){
+      const sz=extractSizes(letterHdr,row,3,aisleC-2);
+      if(Object.keys(sz).length){items.push({...base,sizeSystem:'vest_xs',sizes:sz});continue;}
+    }
     if(sys==='vest_xs'||sys==='boys_bxs'||sys==='boys_numeric'){
       const sz={};
       for(let c=shortS;c<longS;c++){const lbl=shortSubHdr[c];const val=row[c];if(lbl&&val&&typeof val==='number'&&val>0)sz[String(lbl)]=safeInt(val);}
